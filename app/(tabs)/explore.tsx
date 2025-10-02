@@ -1,112 +1,176 @@
-import { Image } from 'expo-image';
-import { Platform, StyleSheet } from 'react-native';
+import { LinearGradient } from 'expo-linear-gradient';
+import React from 'react';
+import { Platform, ScrollView, StyleSheet, Text, View } from 'react-native';
 
-import { Collapsible } from '@/components/ui/collapsible';
-import { ExternalLink } from '@/components/external-link';
-import ParallaxScrollView from '@/components/parallax-scroll-view';
-import { ThemedText } from '@/components/themed-text';
-import { ThemedView } from '@/components/themed-view';
-import { IconSymbol } from '@/components/ui/icon-symbol';
-import { Fonts } from '@/constants/theme';
-
-export default function TabTwoScreen() {
+export default function ExploreScreen() {
   return (
-    <ParallaxScrollView
-      headerBackgroundColor={{ light: '#D0D0D0', dark: '#353636' }}
-      headerImage={
-        <IconSymbol
-          size={310}
-          color="#808080"
-          name="chevron.left.forwardslash.chevron.right"
-          style={styles.headerImage}
-        />
-      }>
-      <ThemedView style={styles.titleContainer}>
-        <ThemedText
-          type="title"
-          style={{
-            fontFamily: Fonts.rounded,
-          }}>
-          Explore
-        </ThemedText>
-      </ThemedView>
-      <ThemedText>This app includes example code to help you get started.</ThemedText>
-      <Collapsible title="File-based routing">
-        <ThemedText>
-          This app has two screens:{' '}
-          <ThemedText type="defaultSemiBold">app/(tabs)/index.tsx</ThemedText> and{' '}
-          <ThemedText type="defaultSemiBold">app/(tabs)/explore.tsx</ThemedText>
-        </ThemedText>
-        <ThemedText>
-          The layout file in <ThemedText type="defaultSemiBold">app/(tabs)/_layout.tsx</ThemedText>{' '}
-          sets up the tab navigator.
-        </ThemedText>
-        <ExternalLink href="https://docs.expo.dev/router/introduction">
-          <ThemedText type="link">Learn more</ThemedText>
-        </ExternalLink>
-      </Collapsible>
-      <Collapsible title="Android, iOS, and web support">
-        <ThemedText>
-          You can open this project on Android, iOS, and the web. To open the web version, press{' '}
-          <ThemedText type="defaultSemiBold">w</ThemedText> in the terminal running this project.
-        </ThemedText>
-      </Collapsible>
-      <Collapsible title="Images">
-        <ThemedText>
-          For static images, you can use the <ThemedText type="defaultSemiBold">@2x</ThemedText> and{' '}
-          <ThemedText type="defaultSemiBold">@3x</ThemedText> suffixes to provide files for
-          different screen densities
-        </ThemedText>
-        <Image
-          source={require('@/assets/images/react-logo.png')}
-          style={{ width: 100, height: 100, alignSelf: 'center' }}
-        />
-        <ExternalLink href="https://reactnative.dev/docs/images">
-          <ThemedText type="link">Learn more</ThemedText>
-        </ExternalLink>
-      </Collapsible>
-      <Collapsible title="Light and dark mode components">
-        <ThemedText>
-          This template has light and dark mode support. The{' '}
-          <ThemedText type="defaultSemiBold">useColorScheme()</ThemedText> hook lets you inspect
-          what the user&apos;s current color scheme is, and so you can adjust UI colors accordingly.
-        </ThemedText>
-        <ExternalLink href="https://docs.expo.dev/develop/user-interface/color-themes/">
-          <ThemedText type="link">Learn more</ThemedText>
-        </ExternalLink>
-      </Collapsible>
-      <Collapsible title="Animations">
-        <ThemedText>
-          This template includes an example of an animated component. The{' '}
-          <ThemedText type="defaultSemiBold">components/HelloWave.tsx</ThemedText> component uses
-          the powerful{' '}
-          <ThemedText type="defaultSemiBold" style={{ fontFamily: Fonts.mono }}>
-            react-native-reanimated
-          </ThemedText>{' '}
-          library to create a waving hand animation.
-        </ThemedText>
-        {Platform.select({
-          ios: (
-            <ThemedText>
-              The <ThemedText type="defaultSemiBold">components/ParallaxScrollView.tsx</ThemedText>{' '}
-              component provides a parallax effect for the header image.
-            </ThemedText>
-          ),
-        })}
-      </Collapsible>
-    </ParallaxScrollView>
+    <ScrollView style={styles.container}>
+      <LinearGradient
+        colors={['#E74C3C', '#FF6B6B']}
+        style={styles.header}
+      >
+        <Text style={styles.headerTitle}>À propos d'AstroMe</Text>
+        <Text style={styles.headerSubtitle}>
+          Découvrez les secrets de l'astrologie
+        </Text>
+      </LinearGradient>
+
+      <View style={styles.content}>
+        <View style={styles.section}>
+          <Text style={styles.sectionTitle}>🌟 Qu'est-ce que l'astrologie ?</Text>
+          <Text style={styles.text}>
+            L'astrologie est un système de croyances qui étudie les corrélations entre les positions 
+            et mouvements des objets célestes et les événements terrestres. Elle divise l'année en 
+            12 signes zodiacaux, chacun ayant ses propres caractéristiques.
+          </Text>
+        </View>
+
+        <View style={styles.section}>
+          <Text style={styles.sectionTitle}>♈ Les 12 signes du zodiaque</Text>
+          <Text style={styles.text}>
+            Chaque signe astrologique correspond à une période de l'année et possède ses propres 
+            traits de personnalité, qualités et défauts. Les signes sont regroupés en quatre 
+            éléments : Feu, Terre, Air et Eau.
+          </Text>
+        </View>
+
+        <View style={styles.section}>
+          <Text style={styles.sectionTitle}>🔥 Les quatre éléments</Text>
+          
+          <View style={styles.elementCard}>
+            <Text style={styles.elementTitle}>🔥 Feu (Bélier, Lion, Sagittaire)</Text>
+            <Text style={styles.elementText}>
+              Énergiques, passionnés et spontanés. Ils aiment l'action et sont des leaders naturels.
+            </Text>
+          </View>
+
+          <View style={styles.elementCard}>
+            <Text style={styles.elementTitle}>🌍 Terre (Taureau, Vierge, Capricorne)</Text>
+            <Text style={styles.elementText}>
+              Pratiques, fiables et terre-à-terre. Ils valorisent la stabilité et la sécurité.
+            </Text>
+          </View>
+
+          <View style={styles.elementCard}>
+            <Text style={styles.elementTitle}>💨 Air (Gémeaux, Balance, Verseau)</Text>
+            <Text style={styles.elementText}>
+              Intellectuels, communicatifs et sociables. Ils aiment les idées et la communication.
+            </Text>
+          </View>
+
+          <View style={styles.elementCard}>
+            <Text style={styles.elementTitle}>💧 Eau (Cancer, Scorpion, Poissons)</Text>
+            <Text style={styles.elementText}>
+              Émotionnels, intuitifs et empathiques. Ils sont guidés par leurs sentiments.
+            </Text>
+          </View>
+        </View>
+
+        <View style={styles.section}>
+          <Text style={styles.sectionTitle}>📱 Comment utiliser AstroMe</Text>
+          <Text style={styles.text}>
+            1. Sélectionnez votre jour de naissance{'\n'}
+            2. Choisissez votre mois de naissance{'\n'}
+            3. Indiquez votre année de naissance{'\n'}
+            4. Découvrez votre signe astrologique et ses caractéristiques{'\n'}
+            5. Explorez vos qualités et points d'attention
+          </Text>
+        </View>
+
+        <View style={styles.footer}>
+          <Text style={styles.footerText}>
+            🌟 AstroMe - Votre guide personnel d'astrologie 🌟
+          </Text>
+          <Text style={styles.disclaimerText}>
+            L'astrologie est un système de croyances à des fins de divertissement et de réflexion personnelle.
+          </Text>
+        </View>
+      </View>
+    </ScrollView>
   );
 }
 
 const styles = StyleSheet.create({
-  headerImage: {
-    color: '#808080',
-    bottom: -90,
-    left: -35,
-    position: 'absolute',
+  container: {
+    flex: 1,
+    backgroundColor: '#f8f9ff',
   },
-  titleContainer: {
-    flexDirection: 'row',
-    gap: 8,
+  header: {
+    paddingTop: Platform.OS === 'ios' ? 50 : 30,
+    paddingBottom: 30,
+    paddingHorizontal: 20,
+    alignItems: 'center',
+    borderBottomLeftRadius: 30,
+    borderBottomRightRadius: 30,
+  },
+  headerTitle: {
+    fontSize: 28,
+    fontWeight: 'bold',
+    color: 'white',
+    marginBottom: 5,
+  },
+  headerSubtitle: {
+    fontSize: 16,
+    color: 'rgba(255, 255, 255, 0.9)',
+    textAlign: 'center',
+  },
+  content: {
+    paddingHorizontal: 20,
+    paddingTop: 20,
+  },
+  section: {
+    marginBottom: 30,
+  },
+  sectionTitle: {
+    fontSize: 22,
+    fontWeight: 'bold',
+    color: '#333',
+    marginBottom: 15,
+  },
+  text: {
+    fontSize: 16,
+    lineHeight: 24,
+    color: '#555',
+    textAlign: 'justify',
+  },
+  elementCard: {
+    backgroundColor: 'white',
+    padding: 15,
+    borderRadius: 12,
+    marginBottom: 12,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 4,
+    elevation: 3,
+  },
+  elementTitle: {
+    fontSize: 18,
+    fontWeight: 'bold',
+    color: '#333',
+    marginBottom: 8,
+  },
+  elementText: {
+    fontSize: 14,
+    color: '#666',
+    lineHeight: 20,
+  },
+  footer: {
+    alignItems: 'center',
+    paddingVertical: 30,
+    paddingBottom: 50,
+  },
+  footerText: {
+    fontSize: 18,
+    color: '#E74C3C',
+    fontWeight: 'bold',
+    textAlign: 'center',
+    marginBottom: 15,
+  },
+  disclaimerText: {
+    fontSize: 12,
+    color: '#999',
+    textAlign: 'center',
+    fontStyle: 'italic',
   },
 });
