@@ -1,0 +1,370 @@
+<!doctype html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>AstroMe — Télécharger</title>
+<meta name="description" content="AstroMe : découvrez votre signe du zodiaque, son portrait complet et vos compatibilités. Téléchargez l'application Android gratuitement.">
+<meta name="theme-color" content="#05060F">
+<meta property="og:title" content="AstroMe — votre signe, en profondeur">
+<meta property="og:description" content="Portrait complet, compatibilités et correspondances des 12 signes. Application Android gratuite.">
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' rx='16' fill='%2305060F'/%3E%3Cpath d='M32 10l5 15 15 5-15 5-5 15-5-15-15-5 15-5z' fill='%23F5D48B'/%3E%3C/svg%3E">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,500;9..144,600&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --void: #05060F;
+    --deep: #0A0C1B;
+    --night: #111428;
+    --surface: rgba(255,255,255,0.045);
+    --surface-strong: rgba(255,255,255,0.075);
+    --border: rgba(255,255,255,0.09);
+    --border-strong: rgba(255,255,255,0.16);
+    --text: #F4F3FF;
+    --muted: #A6A8C4;
+    --faint: #6E7191;
+    --gold: #F5D48B;
+    --gold-deep: #C9A227;
+    --violet: #8B7BF0;
+    --aurora: #5EE7C4;
+    --radius: 20px;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  html { scroll-behavior: smooth; }
+  body {
+    background: var(--void);
+    color: var(--text);
+    font: 16px/1.6 Inter, system-ui, -apple-system, sans-serif;
+    -webkit-font-smoothing: antialiased;
+    overflow-x: hidden;
+  }
+  a { color: inherit; }
+  .serif { font-family: Fraunces, Georgia, serif; font-weight: 500; letter-spacing: -0.01em; }
+
+  /* Ciel étoilé */
+  .sky { position: fixed; inset: 0; z-index: -1; pointer-events: none;
+    background:
+      radial-gradient(60vw 40vw at 80% -10%, rgba(139,123,240,0.22), transparent 70%),
+      radial-gradient(50vw 40vw at -10% 30%, rgba(94,231,196,0.08), transparent 70%),
+      var(--void);
+  }
+  .sky canvas { width: 100%; height: 100%; display: block; }
+
+  .wrap { max-width: 1120px; margin: 0 auto; padding: 0 24px; }
+  @media (max-width: 600px) { .wrap { padding: 0 16px; } }
+
+  nav { display: flex; align-items: center; justify-content: space-between; padding: 22px 0; }
+  .brand { display: flex; align-items: center; gap: 10px; font-weight: 600; text-decoration: none; font-size: 18px; }
+  .brand svg { width: 30px; height: 30px; }
+  nav .links a { color: var(--muted); text-decoration: none; font-size: 15px; margin-left: 24px; }
+  nav .links a:hover { color: var(--text); }
+  @media (max-width: 600px) { nav .links { display: none; } }
+
+  /* Hero */
+  .hero { display: grid; grid-template-columns: 1.1fr 0.9fr; gap: 48px; align-items: center; padding: 56px 0 96px; }
+  @media (max-width: 880px) { .hero { grid-template-columns: 1fr; padding: 24px 0 64px; gap: 56px; } }
+  .eyebrow { display: inline-flex; align-items: center; gap: 8px; padding: 6px 12px; border: 1px solid var(--border-strong);
+    border-radius: 999px; font-size: 13px; color: var(--gold); background: var(--surface); }
+  h1 { font-size: clamp(40px, 6vw, 68px); line-height: 1.04; margin: 20px 0 20px; }
+  h1 em { font-style: italic; color: var(--gold); }
+  .lead { color: var(--muted); font-size: 18px; max-width: 520px; }
+
+  .cta { display: flex; flex-wrap: wrap; align-items: center; gap: 14px; margin-top: 36px; }
+  .btn { display: inline-flex; align-items: center; gap: 12px; text-decoration: none; border-radius: 14px;
+    padding: 14px 22px; font-weight: 600; font-size: 16px; transition: transform .15s, box-shadow .15s, background .15s; }
+  .btn svg { width: 22px; height: 22px; flex: none; }
+  .btn-primary { background: linear-gradient(135deg, #FBE3A8, var(--gold) 45%, var(--gold-deep)); color: #1A1406;
+    box-shadow: 0 10px 30px -10px rgba(245,212,139,0.6); }
+  .btn-primary:hover { transform: translateY(-2px); box-shadow: 0 16px 36px -12px rgba(245,212,139,0.75); }
+  .btn-primary small { display: block; font-weight: 500; font-size: 12px; opacity: .75; line-height: 1.2; }
+  .btn-primary span { line-height: 1.2; }
+  .btn-ghost { border: 1px solid var(--border-strong); background: var(--surface); color: var(--text); }
+  .btn-ghost:hover { background: var(--surface-strong); }
+  .meta { margin-top: 18px; color: var(--faint); font-size: 14px; }
+  .meta b { color: var(--muted); font-weight: 500; }
+
+  /* Téléphone */
+  .phone-stage { position: relative; display: flex; justify-content: center; }
+  .phone-stage::before { content: ""; position: absolute; width: 380px; height: 380px; top: 50%; left: 50%;
+    transform: translate(-50%,-50%); border-radius: 50%;
+    background: radial-gradient(circle, rgba(255,127,80,0.35), transparent 65%); filter: blur(20px); }
+  .orbit { position: absolute; top: 50%; left: 50%; border: 1px dashed rgba(245,212,139,0.18); border-radius: 50%;
+    transform: translate(-50%,-50%); }
+  .orbit.a { width: 440px; height: 440px; animation: spin 80s linear infinite; }
+  .orbit.b { width: 560px; height: 560px; border-style: solid; border-color: rgba(255,255,255,0.05); }
+  .orbit.a::after { content: "✦"; position: absolute; top: -10px; left: 50%; color: var(--gold); font-size: 16px; }
+  @keyframes spin { to { transform: translate(-50%,-50%) rotate(360deg); } }
+  @media (max-width: 600px) { .orbit.a { width: 330px; height: 330px; } .orbit.b { display: none; } }
+  @media (prefers-reduced-motion: reduce) { .orbit.a { animation: none; } }
+
+  .phone { position: relative; width: 280px; height: 572px; border-radius: 44px; padding: 12px;
+    background: linear-gradient(160deg, #2a2d45, #0c0e1d); box-shadow: 0 40px 80px -20px rgba(0,0,0,0.8), inset 0 0 0 1px rgba(255,255,255,0.08); }
+  .screen { width: 100%; height: 100%; border-radius: 34px; overflow: hidden; position: relative;
+    background: radial-gradient(120% 60% at 50% 0%, rgba(255,127,80,0.28), transparent 60%), var(--deep);
+    padding: 44px 18px 18px; display: flex; flex-direction: column; gap: 12px; }
+  .notch { position: absolute; top: 10px; left: 50%; transform: translateX(-50%); width: 84px; height: 22px; border-radius: 12px; background: #000; }
+  .s-label { font-size: 11px; color: var(--muted); text-transform: uppercase; letter-spacing: .14em; text-align: center; }
+  .s-glyph { width: 92px; height: 92px; margin: 6px auto 0; border-radius: 50%; display: grid; place-items: center;
+    font-size: 46px; color: #fff; background: linear-gradient(135deg, #FF5F4B, #FF9E45, #FFC978);
+    box-shadow: 0 0 40px rgba(255,127,80,0.5); }
+  .s-name { font-family: Fraunces, Georgia, serif; font-size: 30px; text-align: center; line-height: 1; }
+  .s-tag { text-align: center; color: var(--muted); font-size: 12.5px; margin-top: -4px; }
+  .chips { display: flex; justify-content: center; gap: 6px; flex-wrap: wrap; }
+  .chip { font-size: 11px; padding: 4px 9px; border-radius: 999px; background: var(--surface-strong); border: 1px solid var(--border); color: var(--text); }
+  .card { background: var(--surface); border: 1px solid var(--border); border-radius: 16px; padding: 12px 14px; }
+  .card h4 { font-size: 11px; color: var(--gold); text-transform: uppercase; letter-spacing: .1em; margin-bottom: 6px; font-weight: 600; }
+  .card p { font-size: 12px; color: var(--muted); line-height: 1.5; }
+  .bar { display: flex; align-items: center; gap: 8px; font-size: 12px; margin-top: 6px; }
+  .bar i { flex: 1; height: 6px; border-radius: 6px; background: rgba(255,255,255,0.08); overflow: hidden; }
+  .bar i::after { content: ""; display: block; height: 100%; width: var(--w); background: linear-gradient(90deg, #FF9E45, #FFC978); border-radius: 6px; }
+  .bar span:first-child { width: 64px; color: var(--text); }
+  .bar span:last-child { width: 26px; text-align: right; color: var(--muted); }
+
+  /* Sections */
+  section { padding: 88px 0; border-top: 1px solid var(--border); }
+  .sec-head { max-width: 640px; margin-bottom: 48px; }
+  .kicker { color: var(--gold); font-size: 13px; font-weight: 600; letter-spacing: .14em; text-transform: uppercase; }
+  h2 { font-size: clamp(30px, 4vw, 44px); line-height: 1.1; margin-top: 12px; }
+  .sec-head p { color: var(--muted); margin-top: 14px; font-size: 17px; }
+
+  .features { display: grid; grid-template-columns: repeat(3, 1fr); gap: 16px; }
+  @media (max-width: 880px) { .features { grid-template-columns: 1fr 1fr; } }
+  @media (max-width: 600px) { .features { grid-template-columns: 1fr; } }
+  .feature { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); padding: 26px; }
+  .feature .ico { width: 44px; height: 44px; border-radius: 12px; display: grid; place-items: center; font-size: 22px;
+    background: var(--surface-strong); border: 1px solid var(--border); margin-bottom: 18px; color: var(--gold); }
+  .feature h3 { font-size: 18px; font-weight: 600; margin-bottom: 8px; }
+  .feature p { color: var(--muted); font-size: 15px; }
+
+  .zodiac { display: grid; grid-template-columns: repeat(12, 1fr); gap: 8px; margin-top: 40px; }
+  @media (max-width: 880px) { .zodiac { grid-template-columns: repeat(6, 1fr); } }
+  .zodiac div { aspect-ratio: 1; display: grid; place-items: center; border-radius: 14px; font-size: 24px;
+    border: 1px solid var(--border); background: var(--surface); color: var(--c); transition: transform .2s, background .2s; }
+  .zodiac div:hover { transform: translateY(-3px); background: var(--surface-strong); }
+
+  /* Installation */
+  .steps { display: grid; grid-template-columns: repeat(3, 1fr); gap: 16px; counter-reset: step; }
+  @media (max-width: 880px) { .steps { grid-template-columns: 1fr; } }
+  .step { position: relative; padding: 28px 26px 26px; border-radius: var(--radius); border: 1px solid var(--border);
+    background: linear-gradient(180deg, var(--surface-strong), var(--surface)); }
+  .step::before { counter-increment: step; content: counter(step); font-family: Fraunces, Georgia, serif; font-size: 44px;
+    color: var(--gold); line-height: 1; display: block; margin-bottom: 14px; }
+  .step h3 { font-size: 17px; font-weight: 600; margin-bottom: 8px; }
+  .step p { color: var(--muted); font-size: 15px; }
+  .note { margin-top: 20px; display: flex; gap: 14px; align-items: flex-start; padding: 18px 20px; border-radius: 16px;
+    border: 1px solid rgba(139,123,240,0.3); background: rgba(139,123,240,0.08); color: var(--muted); font-size: 15px; }
+  .note b { color: var(--text); font-weight: 600; }
+  .note .i { color: var(--violet); font-size: 18px; line-height: 1.4; }
+
+  .platforms { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; margin-top: 16px; }
+  @media (max-width: 600px) { .platforms { grid-template-columns: 1fr; } }
+  .platform { padding: 22px 24px; border-radius: 16px; border: 1px solid var(--border); background: var(--surface); }
+  .platform h3 { font-size: 16px; font-weight: 600; display: flex; align-items: center; gap: 10px; margin-bottom: 6px; }
+  .platform p { color: var(--muted); font-size: 14.5px; }
+  .tag { font-size: 11px; font-weight: 600; padding: 3px 8px; border-radius: 999px; }
+  .tag.ok { background: rgba(94,231,196,0.14); color: var(--aurora); }
+  .tag.soon { background: rgba(255,255,255,0.08); color: var(--muted); }
+
+  /* CTA finale */
+  .final { text-align: center; padding: 104px 0; }
+  .final h2 { max-width: 640px; margin: 0 auto; }
+  .final .cta { justify-content: center; }
+
+  footer { border-top: 1px solid var(--border); padding: 28px 0 40px; color: var(--faint); font-size: 14px; }
+  footer .wrap { display: flex; justify-content: space-between; gap: 16px; flex-wrap: wrap; }
+  footer a { color: var(--muted); text-decoration: none; }
+  footer a:hover { color: var(--text); }
+
+  .reveal { opacity: 0; transform: translateY(16px); transition: opacity .7s ease, transform .7s ease; }
+  .reveal.in { opacity: 1; transform: none; }
+  @media (prefers-reduced-motion: reduce) { .reveal { opacity: 1; transform: none; transition: none; } }
+</style>
+</head>
+<body>
+<div class="sky"><canvas id="stars"></canvas></div>
+
+<svg width="0" height="0" style="position:absolute" aria-hidden="true">
+  <symbol id="logo" viewBox="0 0 64 64">
+    <defs><linearGradient id="lg" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#FBE3A8"/><stop offset="1" stop-color="#C9A227"/></linearGradient></defs>
+    <circle cx="32" cy="32" r="29" fill="none" stroke="url(#lg)" stroke-width="2" opacity=".5"/>
+    <path d="M32 9l5.2 17.8L55 32l-17.8 5.2L32 55l-5.2-17.8L9 32l17.8-5.2z" fill="url(#lg)"/>
+  </symbol>
+  <symbol id="android" viewBox="0 0 24 24">
+    <path fill="currentColor" d="M17.6 9.48l1.84-3.18a.5.5 0 0 0-.87-.5l-1.86 3.22A11.4 11.4 0 0 0 12 8.03c-1.7 0-3.3.36-4.71 1L5.43 5.8a.5.5 0 1 0-.87.5L6.4 9.48A10.8 10.8 0 0 0 1 18h22a10.8 10.8 0 0 0-5.4-8.52zM7 15.25a1.25 1.25 0 1 1 0-2.5 1.25 1.25 0 0 1 0 2.5zm10 0a1.25 1.25 0 1 1 0-2.5 1.25 1.25 0 0 1 0 2.5z"/>
+  </symbol>
+  <symbol id="dl" viewBox="0 0 24 24">
+    <path fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" d="M12 3v12m0 0l-5-5m5 5l5-5M4 19h16"/>
+  </symbol>
+</svg>
+
+<header class="wrap">
+  <nav>
+    <a class="brand" href="#"><svg><use href="#logo"/></svg>AstroMe</a>
+    <div class="links">
+      <a href="#fonctionnalites">Fonctionnalités</a>
+      <a href="#installer">Installation</a>
+      <a class="repo-link" href="https://github.com/BosseKing/astroMe">GitHub</a>
+    </div>
+  </nav>
+</header>
+
+<main>
+  <div class="wrap hero">
+    <div>
+      <span class="eyebrow">✦ Gratuit · Sans compte · Sans publicité</span>
+      <h1 class="serif">Votre signe,<br>lu <em>en profondeur</em>.</h1>
+      <p class="lead">Entrez votre date de naissance : AstroMe révèle votre signe solaire, son portrait complet, ses forces, ses zones d'ombre et les signes avec qui vous vibrez le mieux.</p>
+      <div class="cta">
+        <a class="btn btn-primary dl-apk" href="https://github.com/BosseKing/astroMe/releases/latest/download/AstroMe.apk">
+          <svg><use href="#android"/></svg>
+          <span>Télécharger pour Android<small class="dl-sub">Fichier APK</small></span>
+        </a>
+        <a class="btn btn-ghost" href="#installer">Comment installer ?</a>
+      </div>
+      <p class="meta" id="release-meta">Android 7.0 ou plus récent</p>
+    </div>
+
+    <div class="phone-stage" aria-hidden="true">
+      <div class="orbit b"></div>
+      <div class="orbit a"></div>
+      <div class="phone">
+        <div class="screen">
+          <div class="notch"></div>
+          <div class="s-label">Votre signe solaire</div>
+          <div class="s-glyph">♌</div>
+          <div class="s-name">Lion</div>
+          <div class="s-tag">23 juillet – 22 août · Le roi du zodiaque</div>
+          <div class="chips"><span class="chip">🜂 Feu</span><span class="chip">Fixe</span><span class="chip">☉ Soleil</span></div>
+          <div class="card">
+            <h4>En amour</h4>
+            <p>Généreux et théâtral, il aime avec panache et attend la même ferveur en retour.</p>
+          </div>
+          <div class="card">
+            <h4>Meilleures affinités</h4>
+            <div class="bar"><span>Sagittaire</span><i style="--w:94%"></i><span>94</span></div>
+            <div class="bar"><span>Bélier</span><i style="--w:90%"></i><span>90</span></div>
+            <div class="bar"><span>Gémeaux</span><i style="--w:82%"></i><span>82</span></div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <section id="fonctionnalites">
+    <div class="wrap">
+      <div class="sec-head reveal">
+        <div class="kicker">Ce que vous découvrez</div>
+        <h2 class="serif">Bien plus qu'un horoscope.</h2>
+        <p>Chacun des 12 signes est décrit dans le détail, des traits de caractère aux correspondances traditionnelles.</p>
+      </div>
+      <div class="features">
+        <div class="feature reveal"><div class="ico">☉</div><h3>Votre signe en un geste</h3><p>Choisissez votre jour et votre mois de naissance : le signe solaire s'affiche instantanément.</p></div>
+        <div class="feature reveal"><div class="ico">✧</div><h3>Portrait complet</h3><p>Amour, travail, amitié, argent, bien-être : comment votre signe s'exprime dans chaque domaine de la vie.</p></div>
+        <div class="feature reveal"><div class="ico">♡</div><h3>Compatibilités</h3><p>Vos meilleures affinités et vos relations plus délicates, avec un score et une explication pour chacune.</p></div>
+        <div class="feature reveal"><div class="ico">◐</div><h3>Forces et part d'ombre</h3><p>Qualités, défauts et le point aveugle de votre signe, ce qu'il a tendance à ne pas voir.</p></div>
+        <div class="feature reveal"><div class="ico">❖</div><h3>Correspondances</h3><p>Élément, planète maîtresse, maison, décans, pierre, métal, fleur, couleur, chiffres porte-bonheur, arcane du tarot.</p></div>
+        <div class="feature reveal"><div class="ico">☾</div><h3>Comprendre l'astrologie</h3><p>Un onglet dédié pour explorer les 12 signes, les éléments et les modalités.</p></div>
+      </div>
+      <div class="zodiac reveal" aria-label="Les 12 signes du zodiaque">
+        <div style="--c:#FF9E45" title="Bélier">♈</div><div style="--c:#6EE7A8" title="Taureau">♉</div><div style="--c:#9BB8FF" title="Gémeaux">♊</div>
+        <div style="--c:#8BC8F5" title="Cancer">♋</div><div style="--c:#FF9E45" title="Lion">♌</div><div style="--c:#6EE7A8" title="Vierge">♍</div>
+        <div style="--c:#9BB8FF" title="Balance">♎</div><div style="--c:#8BC8F5" title="Scorpion">♏</div><div style="--c:#FF9E45" title="Sagittaire">♐</div>
+        <div style="--c:#6EE7A8" title="Capricorne">♑</div><div style="--c:#9BB8FF" title="Verseau">♒</div><div style="--c:#8BC8F5" title="Poissons">♓</div>
+      </div>
+    </div>
+  </section>
+
+  <section id="installer">
+    <div class="wrap">
+      <div class="sec-head reveal">
+        <div class="kicker">Installation</div>
+        <h2 class="serif">Installé en moins d'une minute.</h2>
+        <p>AstroMe est distribuée directement sous forme de fichier APK, en dehors du Play Store. Voici comment l'installer sur votre téléphone Android.</p>
+      </div>
+      <div class="steps">
+        <div class="step reveal"><h3>Téléchargez l'APK</h3><p>Depuis votre téléphone, touchez « Télécharger pour Android ». Le fichier <b>AstroMe.apk</b> arrive dans vos téléchargements.</p></div>
+        <div class="step reveal"><h3>Autorisez l'installation</h3><p>À l'ouverture, Android demande d'autoriser votre navigateur à installer des applications inconnues. Touchez <b>Paramètres</b>, activez l'option, puis revenez.</p></div>
+        <div class="step reveal"><h3>Installez et ouvrez</h3><p>Touchez <b>Installer</b>. AstroMe apparaît ensuite dans vos applications, prête à lire votre ciel.</p></div>
+      </div>
+      <div class="note reveal">
+        <span class="i">ⓘ</span>
+        <div><b>Play Protect peut afficher un avertissement</b> parce que l'application ne vient pas du Play Store. Touchez « Plus de détails » puis « Installer quand même ». Le code source de l'application est public sur <a class="repo-link" href="https://github.com/BosseKing/astroMe">GitHub</a>.</div>
+      </div>
+      <div class="platforms">
+        <div class="platform reveal"><h3>Android <span class="tag ok">Disponible</span></h3><p>Android 7.0 ou plus récent. Fonctionne hors connexion après installation.</p></div>
+        <div class="platform reveal"><h3>iPhone <span class="tag soon">Bientôt</span></h3><p>La version iOS demande une publication sur l'App Store. Elle n'est pas encore disponible.</p></div>
+      </div>
+    </div>
+  </section>
+
+  <section class="final">
+    <div class="wrap reveal">
+      <h2 class="serif">Le ciel de votre naissance vous attend.</h2>
+      <div class="cta">
+        <a class="btn btn-primary dl-apk" href="https://github.com/BosseKing/astroMe/releases/latest/download/AstroMe.apk">
+          <svg><use href="#dl"/></svg>
+          <span>Télécharger AstroMe<small class="dl-sub">Fichier APK</small></span>
+        </a>
+      </div>
+    </div>
+  </section>
+</main>
+
+<footer>
+  <div class="wrap">
+    <span>© <span id="year">2026</span> AstroMe</span>
+    <span><a class="repo-link" href="https://github.com/BosseKing/astroMe">Code source</a> · <a href="https://github.com/BosseKing/astroMe/releases">Toutes les versions</a></span>
+  </div>
+</footer>
+
+<script>
+  document.getElementById('year').textContent = new Date().getFullYear();
+
+  // Étoiles
+  (function () {
+    const c = document.getElementById('stars'), ctx = c.getContext('2d');
+    const reduce = matchMedia('(prefers-reduced-motion: reduce)').matches;
+    let stars = [], w, h, dpr;
+    function resize() {
+      dpr = Math.min(devicePixelRatio || 1, 2);
+      w = c.width = innerWidth * dpr; h = c.height = innerHeight * dpr;
+      const n = Math.round(innerWidth * innerHeight / 5000);
+      stars = Array.from({ length: n }, () => ({
+        x: Math.random() * w, y: Math.random() * h,
+        r: (Math.random() * 1.1 + 0.2) * dpr, p: Math.random() * Math.PI * 2, s: 0.4 + Math.random() * 1.2
+      }));
+    }
+    function draw(t) {
+      ctx.clearRect(0, 0, w, h);
+      for (const s of stars) {
+        const a = reduce ? 0.6 : 0.35 + 0.4 * Math.sin(s.p + t / 1000 * s.s);
+        ctx.globalAlpha = a; ctx.fillStyle = '#F4F3FF';
+        ctx.beginPath(); ctx.arc(s.x, s.y, s.r, 0, 7); ctx.fill();
+      }
+      if (!reduce) requestAnimationFrame(draw);
+    }
+    addEventListener('resize', resize); resize(); requestAnimationFrame(draw);
+  })();
+
+  // Apparition au défilement
+  const io = new IntersectionObserver(es => es.forEach(e => { if (e.isIntersecting) { e.target.classList.add('in'); io.unobserve(e.target); } }), { threshold: 0.12 });
+  document.querySelectorAll('.reveal').forEach(el => io.observe(el));
+
+  // Infos de la dernière version (taille, numéro)
+  fetch('https://api.github.com/repos/BosseKing/astroMe/releases/latest')
+    .then(r => r.ok ? r.json() : null)
+    .then(rel => {
+      if (!rel) return;
+      const apk = (rel.assets || []).find(a => a.name.endsWith('.apk'));
+      if (!apk) return;
+      const mb = (apk.size / 1048576).toFixed(1).replace('.', ',');
+      const date = new Date(rel.published_at).toLocaleDateString('fr-FR', { day: 'numeric', month: 'long', year: 'numeric' });
+      document.querySelectorAll('.dl-apk').forEach(a => a.href = apk.browser_download_url);
+      document.querySelectorAll('.dl-sub').forEach(s => s.textContent = `APK · ${mb} Mo`);
+      document.getElementById('release-meta').innerHTML = `Version <b>${rel.tag_name}</b> · publiée le ${date} · Android 7.0+`;
+    })
+    .catch(() => {});
+</script>
+</body>
+</html>
