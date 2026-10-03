@@ -1,381 +1,645 @@
-import { ZodiacSign } from '@/types/astrology';
-import { zodiacSigns } from '@/utils/zodiac';
 import { useFocusEffect } from '@react-navigation/native';
+import * as Haptics from 'expo-haptics';
 import { LinearGradient } from 'expo-linear-gradient';
-import React from 'react';
+import React, { useCallback, useState } from 'react';
 import {
-    BackHandler,
-    Dimensions,
-    Platform,
-    ScrollView,
-    StyleSheet,
-    Text,
-    TouchableOpacity,
-    View,
+  BackHandler,
+  Platform,
+  Pressable,
+  ScrollView,
+  StyleSheet,
+  Text,
+  View,
 } from 'react-native';
+import Animated, { FadeIn, FadeInDown } from 'react-native-reanimated';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
+
+import CosmicBackground from '@/components/ui/cosmic-background';
+import {
+  BackButton,
+  Chip,
+  GhostButton,
+  GlassCard,
+  ScoreBar,
+  SectionLabel,
+  StatTile,
+} from '@/components/ui/kit';
+import { ElementTheme, Layout as L, Palette, Radius, Space, TAB_BAR_HEIGHT, Type, glow } from '@/constants/design';
+import { CompatibilityMatch, ZodiacSign } from '@/types/astrology';
+import { formatMonthDay, getSignByName } from '@/utils/zodiac';
 
 interface ZodiacResultProps {
   zodiacSign: ZodiacSign;
-  birthDate: { day: number; month: number; year: number } | null;
+  birthDate?: { day: number; month: number } | null;
   onBack: () => void;
   onSignSelect?: (zodiacSign: ZodiacSign) => void;
+  /** Libellé du retour : dépend de l'écran d'où l'on vient. */
+  backLabel?: string;
 }
 
-const { width } = Dimensions.get('window');
+type TabKey = 'portrait' | 'identite' | 'vie' | 'affinites';
 
-export default function ZodiacResult({ zodiacSign, birthDate, onBack, onSignSelect }: ZodiacResultProps) {
+const TABS: { key: TabKey; label: string }[] = [
+  { key: 'portrait', label: 'Portrait' },
+  { key: 'identite', label: 'Identité' },
+  { key: 'vie', label: 'Sa vie' },
+  { key: 'affinites', label: 'Affinités' },
+];
+
+export default function ZodiacResult({
+  zodiacSign: sign,
+  birthDate,
+  onBack,
+  onSignSelect,
+  backLabel = 'Changer de date',
+}: ZodiacResultProps) {
+  const insets = useSafeAreaInsets();
+  const [tab, setTab] = useState<TabKey>('portrait');
+  const element = ElementTheme[sign.element];
+
   useFocusEffect(
-    React.useCallback(() => {
-      const onBackPress = () => {
+    useCallback(() => {
+      const subscription = BackHandler.addEventListener('hardwareBackPress', () => {
         onBack();
         return true;
-      };
-
-      const subscription = BackHandler.addEventListener('hardwareBackPress', onBackPress);
-
+      });
       return () => subscription.remove();
     }, [onBack])
   );
 
-  const findSignByName = (signName: string) => {
-    return zodiacSigns.find(sign => sign.name === signName);
+  const openSign = (name: string) => {
+    const found = getSignByName(name);
+    if (!found || !onSignSelect) return;
+    if (Platform.OS !== 'web') Haptics.selectionAsync().catch(() => {});
+    setTab('portrait');
+    onSignSelect(found);
   };
 
-  const handleSignPress = (signName: string) => {
-    const foundSign = findSignByName(signName);
-    if (foundSign && onSignSelect) {
-      onSignSelect(foundSign);
-    }
+  const selectTab = (key: TabKey) => {
+    if (Platform.OS !== 'web') Haptics.selectionAsync().catch(() => {});
+    setTab(key);
   };
 
   return (
-    <ScrollView style={styles.container} showsVerticalScrollIndicator={false}>
-      {/* En-tête avec gradient */}
-      <LinearGradient
-        colors={zodiacSign.gradient}
-        style={styles.header}
+    <CosmicBackground accent={sign.color}>
+      <ScrollView
+        showsVerticalScrollIndicator={false}
+        contentContainerStyle={[
+          styles.scroll,
+          { paddingTop: insets.top + Space.md, paddingBottom: insets.bottom + TAB_BAR_HEIGHT + Space.xl },
+        ]}
       >
-        <Text style={styles.emoji}>{zodiacSign.emoji}</Text>
-        <Text style={styles.signName}>{zodiacSign.name}</Text>
-        <Text style={styles.symbol}>{zodiacSign.symbol}</Text>
-        <Text style={styles.period}>{zodiacSign.period}</Text>
-        <Text style={styles.element}>Élément : {zodiacSign.element}</Text>
-      </LinearGradient>
+        <View style={styles.inner}>
+          <BackButton onPress={onBack} label={backLabel} />
 
-      {/* Date de naissance */}
-      {birthDate && (
-        <View style={styles.birthDateContainer}>
-          <Text style={styles.birthDateLabel}>Votre date de naissance :</Text>
-          <Text style={styles.birthDateText}>
-            {birthDate.day}/{birthDate.month.toString().padStart(2, '0')}/{birthDate.year}
-          </Text>
-        </View>
-      )}
-
-      {/* Description */}
-      <View style={styles.section}>
-        <Text style={styles.sectionTitle}>Description</Text>
-        <View style={styles.card}>
-          <Text style={styles.description}>{zodiacSign.description}</Text>
-        </View>
-      </View>
-
-      {/* Qualités */}
-      <View style={styles.section}>
-        <Text style={styles.sectionTitle}>✨ Vos qualités</Text>
-        <View style={styles.card}>
-          {zodiacSign.qualities.map((quality, index) => (
-            <View key={index} style={styles.listItem}>
+          {/* ── Hero ─────────────────────────────────────────── */}
+          <Animated.View key={sign.id} entering={FadeIn.duration(450)} style={styles.hero}>
+            <View style={[styles.auraOuter, glow(sign.color, 40, 0)]}>
               <LinearGradient
-                colors={['#4CAF50', '#66BB6A']}
-                style={styles.bullet}
+                colors={sign.gradient}
+                start={{ x: 0.1, y: 0 }}
+                end={{ x: 0.9, y: 1 }}
+                style={styles.auraRing}
               >
-                <Text style={styles.bulletText}>+</Text>
+                <View style={styles.auraCore}>
+                  <Text style={styles.heroGlyph}>{sign.symbol}</Text>
+                </View>
               </LinearGradient>
-              <Text style={styles.listText}>{quality}</Text>
             </View>
-          ))}
-        </View>
-      </View>
 
-      {/* Défauts */}
-      <View style={styles.section}>
-        <Text style={styles.sectionTitle}>⚠️ Points d'attention</Text>
-        <View style={styles.card}>
-          {zodiacSign.flaws.map((flaw, index) => (
-            <View key={index} style={styles.listItem}>
-              <LinearGradient
-                colors={['#FF9800', '#FFB74D']}
-                style={styles.bullet}
-              >
-                <Text style={styles.bulletText}>!</Text>
-              </LinearGradient>
-              <Text style={styles.listText}>{flaw}</Text>
+            <Text style={styles.heroName}>{sign.name}</Text>
+            <Text style={[styles.heroTagline, { color: sign.color }]}>
+              {sign.tagline} · « {sign.motto} »
+            </Text>
+            <Text style={styles.heroPeriod}>{sign.period}</Text>
+
+            <View style={styles.heroChips}>
+              <Chip accent={element.tint}>{`${element.glyph}  ${sign.element}`}</Chip>
+              <Chip accent={Palette.textMuted}>{sign.modality}</Chip>
+              <Chip accent={Palette.textMuted}>{sign.polarity}</Chip>
+              <Chip accent={Palette.gold}>{`${sign.planetSymbol}  ${sign.rulingPlanet}`}</Chip>
             </View>
-          ))}
-        </View>
-      </View>
 
-      {/* Compatibilité */}
-      <View style={styles.section}>
-        <Text style={styles.sectionTitle}>💕 Compatibilité astrologique</Text>
-        
-        {/* Bons matches */}
-        <View style={styles.compatibilityCard}>
-          <Text style={styles.compatibilityTitle}>💚 Signes compatibles</Text>
-          <View style={styles.compatibilityList}>
-            {zodiacSign.compatibility.goodMatches.map((sign, index) => (
-              <TouchableOpacity 
-                key={index} 
-                style={styles.compatibilityItem}
-                onPress={() => handleSignPress(sign)}
-              >
-                <LinearGradient
-                  colors={['#4CAF50', '#66BB6A']}
-                  style={styles.compatibilityBullet}
+            {birthDate ? (
+              <View style={[styles.birthPill, { borderColor: `${sign.color}44` }]}>
+                <Text style={styles.birthLabel}>Né·e le</Text>
+                <Text style={styles.birthValue}>
+                  {formatMonthDay(birthDate.day, birthDate.month)}
+                </Text>
+              </View>
+            ) : null}
+          </Animated.View>
+
+          {/* ── Onglets ──────────────────────────────────────── */}
+          <View style={styles.tabBar}>
+            {TABS.map((item) => {
+              const active = tab === item.key;
+              return (
+                <Pressable
+                  key={item.key}
+                  onPress={() => selectTab(item.key)}
+                  accessibilityRole="tab"
+                  accessibilityState={{ selected: active }}
+                  style={({ pressed }) => [
+                    styles.tab,
+                    active && { backgroundColor: `${sign.color}26`, borderColor: `${sign.color}66` },
+                    pressed && styles.pressed,
+                  ]}
                 >
-                  <Text style={styles.compatibilityBulletText}>💚</Text>
-                </LinearGradient>
-                <Text style={styles.compatibilityText}>{sign}</Text>
-                <Text style={styles.clickHint}>👆</Text>
-              </TouchableOpacity>
-            ))}
+                  <Text style={[styles.tabLabel, active && styles.tabLabelActive]}>
+                    {item.label}
+                  </Text>
+                </Pressable>
+              );
+            })}
+          </View>
+
+          {/* ── Contenu ──────────────────────────────────────── */}
+          <Animated.View key={`${sign.id}-${tab}`} entering={FadeInDown.duration(320)}>
+            {tab === 'portrait' ? <PortraitTab sign={sign} /> : null}
+            {tab === 'identite' ? <IdentityTab sign={sign} /> : null}
+            {tab === 'vie' ? <LifeTab sign={sign} /> : null}
+            {tab === 'affinites' ? <AffinityTab sign={sign} onOpenSign={openSign} /> : null}
+          </Animated.View>
+
+          <View style={styles.footerActions}>
+            <GhostButton label={backLabel} onPress={onBack} accent={sign.color} />
           </View>
         </View>
-
-        {/* Mauvais matches */}
-        <View style={styles.compatibilityCard}>
-          <Text style={styles.compatibilityTitle}>💔 Relations difficiles</Text>
-          <View style={styles.compatibilityList}>
-            {zodiacSign.compatibility.badMatches.map((sign, index) => (
-              <TouchableOpacity 
-                key={index} 
-                style={styles.compatibilityItem}
-                onPress={() => handleSignPress(sign)}
-              >
-                <LinearGradient
-                  colors={['#F44336', '#EF5350']}
-                  style={styles.compatibilityBullet}
-                >
-                  <Text style={styles.compatibilityBulletText}>💔</Text>
-                </LinearGradient>
-                <Text style={styles.compatibilityText}>{sign}</Text>
-                <Text style={styles.clickHint}>👆</Text>
-              </TouchableOpacity>
-            ))}
-          </View>
-        </View>
-      </View>
-
-      {/* Bouton retour */}
-      <TouchableOpacity style={styles.backButton} onPress={onBack}>
-        <LinearGradient
-          colors={['#E74C3C', '#FF6B6B']}
-          style={styles.backGradient}
-        >
-          <Text style={styles.backText}>🔄 Choisir une autre date</Text>
-        </LinearGradient>
-      </TouchableOpacity>
-
-      <View style={styles.footer}>
-        <Text style={styles.footerText}>
-          🌟 Merci d'avoir utilisé AstroMe ! 🌟
-        </Text>
-      </View>
-    </ScrollView>
+      </ScrollView>
+    </CosmicBackground>
   );
 }
 
+/* ══ Onglet Portrait ═══════════════════════════════════════════ */
+
+function PortraitTab({ sign }: { sign: ZodiacSign }) {
+  return (
+    <View style={styles.tabContent}>
+      <View>
+        <SectionLabel accent={sign.color}>Le portrait</SectionLabel>
+        <GlassCard>
+          <Text style={styles.paragraph}>{sign.description}</Text>
+        </GlassCard>
+      </View>
+
+      <View>
+        <SectionLabel accent={Palette.success}>Ses forces</SectionLabel>
+        <View style={styles.chipWrap}>
+          {sign.qualities.map((quality) => (
+            <Chip key={quality} tone="positive">
+              {quality}
+            </Chip>
+          ))}
+        </View>
+      </View>
+
+      <View>
+        <SectionLabel accent={Palette.warning}>Ses points d’attention</SectionLabel>
+        <View style={styles.chipWrap}>
+          {sign.flaws.map((flaw) => (
+            <Chip key={flaw} tone="caution">
+              {flaw}
+            </Chip>
+          ))}
+        </View>
+      </View>
+
+      <View>
+        <SectionLabel accent={sign.color}>Sa part d’ombre</SectionLabel>
+        <GlassCard style={[styles.accentCard, { borderLeftColor: sign.color }]}>
+          <Text style={styles.paragraph}>{sign.shadow}</Text>
+        </GlassCard>
+      </View>
+
+      <View>
+        <SectionLabel accent={Palette.gold}>{`Ils sont ${sign.name}`}</SectionLabel>
+        <View style={styles.chipWrap}>
+          {sign.celebrities.map((name) => (
+            <Chip key={name} accent={Palette.gold}>
+              {name}
+            </Chip>
+          ))}
+        </View>
+      </View>
+    </View>
+  );
+}
+
+/* ══ Onglet Identité ═══════════════════════════════════════════ */
+
+function IdentityTab({ sign }: { sign: ZodiacSign }) {
+  const element = ElementTheme[sign.element];
+
+  return (
+    <View style={styles.tabContent}>
+      <View>
+        <SectionLabel accent={sign.color}>Carte d’identité astrologique</SectionLabel>
+        <View style={styles.tileGrid}>
+          <StatTile label="Planète maîtresse" value={sign.rulingPlanet} glyph={sign.planetSymbol} accent={Palette.gold} />
+          <StatTile label="Élément" value={sign.element} glyph={element.glyph} accent={element.tint} />
+          <StatTile label="Mode" value={sign.modality} accent={sign.color} />
+          <StatTile label="Polarité" value={sign.polarity} accent={sign.color} />
+          <StatTile label="Maison" value={sign.house} accent={sign.color} wide />
+          <StatTile label="Domaine de la maison" value={sign.houseTheme} wide />
+          <StatTile label="Saison" value={sign.season} />
+          <StatTile label="Signe opposé" value={sign.oppositeSign} glyph="⇄" />
+        </View>
+      </View>
+
+      <View>
+        <SectionLabel accent={sign.color}>Les trois décans</SectionLabel>
+        <GlassCard>
+          {sign.decans.map((decan, index) => (
+            <View
+              key={decan}
+              style={[styles.decanRow, index === sign.decans.length - 1 && styles.decanLast]}
+            >
+              <View style={[styles.decanDot, { backgroundColor: sign.color }]} />
+              <Text style={styles.decanText}>{decan}</Text>
+            </View>
+          ))}
+        </GlassCard>
+      </View>
+
+      <View>
+        <SectionLabel accent={Palette.gold}>Correspondances traditionnelles</SectionLabel>
+        <View style={styles.tileGrid}>
+          <StatTile label="Pierre" value={sign.stone} glyph="◈" accent={sign.color} />
+          <StatTile label="Métal" value={sign.metal} glyph="⬡" accent={sign.color} />
+          <StatTile label="Fleur" value={sign.flower} glyph="❀" accent={sign.color} />
+          <StatTile label="Animal" value={sign.animal} glyph="◐" accent={sign.color} />
+          <StatTile label="Partie du corps" value={sign.bodyPart} wide glyph="✛" accent={sign.color} />
+          <StatTile label="Jour favorable" value={sign.luckyDay} glyph="☉" accent={Palette.gold} />
+          <StatTile label="Couleur" value={sign.luckyColor} glyph="◍" accent={Palette.gold} />
+          <StatTile label="Nombres" value={sign.luckyNumbers.join(' · ')} glyph="#" accent={Palette.gold} />
+          <StatTile label="Arcane du tarot" value={sign.tarot} glyph="✧" accent={Palette.gold} />
+        </View>
+      </View>
+    </View>
+  );
+}
+
+/* ══ Onglet Sa vie ═════════════════════════════════════════════ */
+
+const LIFE_SECTIONS: { key: keyof ZodiacSign; label: string; glyph: string }[] = [
+  { key: 'inLove', label: 'En amour', glyph: '♥' },
+  { key: 'inWork', label: 'Au travail', glyph: '✦' },
+  { key: 'inFriendship', label: 'En amitié', glyph: '❖' },
+  { key: 'money', label: 'Avec l’argent', glyph: '◈' },
+  { key: 'wellbeing', label: 'Santé & bien-être', glyph: '☘' },
+];
+
+function LifeTab({ sign }: { sign: ZodiacSign }) {
+  return (
+    <View style={styles.tabContent}>
+      {LIFE_SECTIONS.map(({ key, label, glyph }) => (
+        <View key={key}>
+          <SectionLabel accent={sign.color}>{label}</SectionLabel>
+          <GlassCard>
+            <View style={styles.lifeHead}>
+              <Text style={[styles.lifeGlyph, { color: sign.color }]}>{glyph}</Text>
+              <View style={[styles.lifeRule, { backgroundColor: `${sign.color}44` }]} />
+            </View>
+            <Text style={styles.paragraph}>{sign[key] as string}</Text>
+          </GlassCard>
+        </View>
+      ))}
+    </View>
+  );
+}
+
+/* ══ Onglet Affinités ══════════════════════════════════════════ */
+
+function MatchRow({
+  match,
+  tone,
+  isLast,
+  onPress,
+}: {
+  match: CompatibilityMatch;
+  tone: 'good' | 'hard';
+  isLast: boolean;
+  onPress: () => void;
+}) {
+  const other = getSignByName(match.sign);
+  const barColors =
+    tone === 'good'
+      ? ([Palette.aurora, Palette.success] as const)
+      : ([Palette.warning, Palette.danger] as const);
+
+  return (
+    <Pressable
+      onPress={onPress}
+      accessibilityRole="button"
+      accessibilityLabel={`Voir le signe ${match.sign}`}
+      style={({ pressed }) => [
+        styles.matchRow,
+        isLast && styles.matchRowLast,
+        pressed && styles.pressed,
+      ]}
+    >
+      <View style={styles.matchHead}>
+        <Text style={[styles.matchGlyph, { color: other?.color ?? Palette.text }]}>
+          {other?.symbol ?? '✦'}
+        </Text>
+        <Text style={styles.matchName}>{match.sign}</Text>
+        <Text style={[styles.matchScore, { color: tone === 'good' ? Palette.success : Palette.warning }]}>
+          {match.score}%
+        </Text>
+        <Text style={styles.matchChevron}>›</Text>
+      </View>
+      <ScoreBar score={match.score} colors={barColors} />
+      <Text style={styles.matchNote}>{match.note}</Text>
+    </Pressable>
+  );
+}
+
+function AffinityTab({
+  sign,
+  onOpenSign,
+}: {
+  sign: ZodiacSign;
+  onOpenSign: (name: string) => void;
+}) {
+  return (
+    <View style={styles.tabContent}>
+      <Text style={styles.helperText}>
+        Touchez un signe pour ouvrir sa fiche complète.
+      </Text>
+
+      <View>
+        <SectionLabel accent={Palette.success}>Les meilleures ententes</SectionLabel>
+        <GlassCard padded={false} style={styles.matchCard}>
+          {sign.bestMatches.map((match, index) => (
+            <MatchRow
+              key={match.sign}
+              match={match}
+              tone="good"
+              isLast={index === sign.bestMatches.length - 1}
+              onPress={() => onOpenSign(match.sign)}
+            />
+          ))}
+        </GlassCard>
+      </View>
+
+      <View>
+        <SectionLabel accent={Palette.warning}>Les relations à travailler</SectionLabel>
+        <GlassCard padded={false} style={styles.matchCard}>
+          {sign.challenges.map((match, index) => (
+            <MatchRow
+              key={match.sign}
+              match={match}
+              tone="hard"
+              isLast={index === sign.challenges.length - 1}
+              onPress={() => onOpenSign(match.sign)}
+            />
+          ))}
+        </GlassCard>
+      </View>
+
+      <GlassCard style={[styles.accentCard, { borderLeftColor: sign.color }]}>
+        <Text style={styles.paragraph}>
+          <Text style={{ color: sign.color, fontWeight: '700' }}>Le saviez-vous ? </Text>
+          Un signe opposé n’est pas un mauvais signe : l’axe {sign.name} – {sign.oppositeSign} met
+          face à face deux moitiés d’un même thème. L’attirance y est forte, la friction aussi, et
+          c’est souvent la relation qui fait le plus grandir.
+        </Text>
+      </GlassCard>
+    </View>
+  );
+}
+
+/* ══ Styles ════════════════════════════════════════════════════ */
+
 const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: '#f8f9ff',
-  },
-  header: {
-    paddingTop: Platform.OS === 'ios' ? 50 : 30,
-    paddingBottom: 40,
-    paddingHorizontal: 20,
+  scroll: {
+    paddingHorizontal: L.gutter,
     alignItems: 'center',
-    borderBottomLeftRadius: 30,
-    borderBottomRightRadius: 30,
-    marginBottom: 20,
   },
-  emoji: {
-    fontSize: 80,
-    marginBottom: 10,
+  inner: {
+    width: '100%',
+    maxWidth: L.maxContent,
   },
-  signName: {
-    fontSize: 36,
-    fontWeight: 'bold',
-    color: 'white',
-    marginBottom: 5,
-    textAlign: 'center',
+  pressed: {
+    opacity: 0.7,
   },
-  symbol: {
-    fontSize: 24,
-    color: 'rgba(255, 255, 255, 0.9)',
-    marginBottom: 10,
-  },
-  period: {
-    fontSize: 18,
-    color: 'rgba(255, 255, 255, 0.9)',
-    marginBottom: 5,
-    textAlign: 'center',
-  },
-  element: {
-    fontSize: 16,
-    color: 'rgba(255, 255, 255, 0.8)',
-    fontStyle: 'italic',
-  },
-  birthDateContainer: {
-    backgroundColor: 'white',
-    marginHorizontal: 20,
-    marginBottom: 20,
-    padding: 20,
-    borderRadius: 15,
+
+  hero: {
     alignItems: 'center',
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
-    shadowRadius: 8,
-    elevation: 5,
+    paddingTop: Space.lg,
+    paddingBottom: Space.xl,
   },
-  birthDateLabel: {
-    fontSize: 16,
-    color: '#666',
-    marginBottom: 5,
+  auraOuter: {
+    borderRadius: 999,
+    marginBottom: Space.lg,
   },
-  birthDateText: {
-    fontSize: 24,
-    fontWeight: 'bold',
-    color: '#333',
-  },
-  section: {
-    marginHorizontal: 20,
-    marginBottom: 25,
-  },
-  sectionTitle: {
-    fontSize: 22,
-    fontWeight: 'bold',
-    color: '#333',
-    marginBottom: 15,
-  },
-  card: {
-    backgroundColor: 'white',
-    padding: 20,
-    borderRadius: 15,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
-    shadowRadius: 8,
-    elevation: 5,
-  },
-  description: {
-    fontSize: 16,
-    lineHeight: 24,
-    color: '#555',
-    textAlign: 'justify',
-  },
-  listItem: {
-    flexDirection: 'row',
+  auraRing: {
+    width: 132,
+    height: 132,
+    borderRadius: 66,
     alignItems: 'center',
-    marginBottom: 12,
-  },
-  bullet: {
-    width: 28,
-    height: 28,
-    borderRadius: 14,
     justifyContent: 'center',
+  },
+  auraCore: {
+    width: 118,
+    height: 118,
+    borderRadius: 59,
+    backgroundColor: Palette.deep,
     alignItems: 'center',
-    marginRight: 15,
+    justifyContent: 'center',
   },
-  bulletText: {
-    color: 'white',
-    fontWeight: 'bold',
-    fontSize: 16,
+  heroGlyph: {
+    fontSize: 58,
+    lineHeight: 70,
+    color: Palette.text,
   },
-  listText: {
-    fontSize: 16,
-    color: '#555',
-    flex: 1,
+  heroName: {
+    fontSize: 42,
+    lineHeight: 48,
+    fontWeight: '700',
+    letterSpacing: -0.8,
+    color: Palette.text,
   },
-  backButton: {
-    marginHorizontal: 20,
-    marginTop: 20,
-    marginBottom: 30,
-    borderRadius: 25,
-    overflow: 'hidden',
+  heroTagline: {
+    fontSize: 15,
+    fontWeight: '600',
+    marginTop: 6,
+    letterSpacing: 0.2,
   },
-  backGradient: {
-    paddingVertical: 18,
-    paddingHorizontal: 30,
-    alignItems: 'center',
+  heroPeriod: {
+    ...Type.label,
+    color: Palette.textFaint,
+    marginTop: Space.sm,
   },
-  backText: {
-    color: 'white',
-    fontSize: 18,
-    fontWeight: 'bold',
-  },
-  footer: {
-    alignItems: 'center',
-    paddingVertical: 20,
-    paddingBottom: 40,
-  },
-  footerText: {
-    fontSize: 16,
-    color: '#E74C3C',
-    fontStyle: 'italic',
-  },
-  compatibilityCard: {
-    backgroundColor: 'white',
-    padding: 15,
-    borderRadius: 15,
-    marginBottom: 15,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
-    shadowRadius: 8,
-    elevation: 5,
-  },
-  compatibilityTitle: {
-    fontSize: 18,
-    fontWeight: 'bold',
-    color: '#333',
-    marginBottom: 12,
-  },
-  compatibilityList: {
+  heroChips: {
     flexDirection: 'row',
     flexWrap: 'wrap',
+    justifyContent: 'center',
+    gap: Space.sm,
+    marginTop: Space.lg,
   },
-  compatibilityItem: {
+  birthPill: {
+    flexDirection: 'row',
+    alignItems: 'baseline',
+    gap: Space.sm,
+    marginTop: Space.lg,
+    paddingHorizontal: Space.lg,
+    paddingVertical: Space.sm,
+    borderRadius: Radius.pill,
+    borderWidth: StyleSheet.hairlineWidth,
+    backgroundColor: Palette.surface,
+  },
+  birthLabel: {
+    ...Type.label,
+    color: Palette.textFaint,
+  },
+  birthValue: {
+    fontSize: 15,
+    fontWeight: '700',
+    color: Palette.text,
+  },
+
+  tabBar: {
+    flexDirection: 'row',
+    gap: 6,
+    padding: 5,
+    borderRadius: Radius.pill,
+    backgroundColor: Palette.surface,
+    borderWidth: StyleSheet.hairlineWidth,
+    borderColor: Palette.border,
+    marginBottom: Space.xl,
+  },
+  tab: {
+    flex: 1,
+    paddingVertical: 10,
+    borderRadius: Radius.pill,
+    alignItems: 'center',
+    borderWidth: StyleSheet.hairlineWidth,
+    borderColor: 'transparent',
+  },
+  tabLabel: {
+    fontSize: 13,
+    fontWeight: '600',
+    color: Palette.textMuted,
+  },
+  tabLabelActive: {
+    color: Palette.text,
+  },
+
+  tabContent: {
+    gap: Space.xl,
+  },
+  paragraph: {
+    ...Type.body,
+    color: Palette.textMuted,
+  },
+  helperText: {
+    fontSize: 13,
+    color: Palette.textFaint,
+    textAlign: 'center',
+    marginBottom: -Space.sm,
+  },
+  chipWrap: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: Space.sm,
+  },
+  accentCard: {
+    borderLeftWidth: 3,
+  },
+
+  tileGrid: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: Space.sm,
+  },
+
+  decanRow: {
+    flexDirection: 'row',
+    gap: Space.md,
+    paddingBottom: Space.md,
+    marginBottom: Space.md,
+    borderBottomWidth: StyleSheet.hairlineWidth,
+    borderBottomColor: Palette.border,
+  },
+  decanLast: {
+    paddingBottom: 0,
+    marginBottom: 0,
+    borderBottomWidth: 0,
+  },
+  decanDot: {
+    width: 6,
+    height: 6,
+    borderRadius: 3,
+    marginTop: 8,
+  },
+  decanText: {
+    flex: 1,
+    fontSize: 14,
+    lineHeight: 21,
+    color: Palette.textMuted,
+  },
+
+  lifeHead: {
     flexDirection: 'row',
     alignItems: 'center',
-    marginRight: 15,
-    marginBottom: 8,
-    backgroundColor: '#f8f9ff',
-    paddingHorizontal: 12,
-    paddingVertical: 6,
-    borderRadius: 20,
+    gap: Space.md,
+    marginBottom: Space.md,
   },
-  compatibilityBullet: {
-    width: 20,
-    height: 20,
-    borderRadius: 10,
-    justifyContent: 'center',
+  lifeGlyph: {
+    fontSize: 16,
+  },
+  lifeRule: {
+    flex: 1,
+    height: StyleSheet.hairlineWidth,
+  },
+
+  matchCard: {
+    paddingHorizontal: Space.lg,
+    paddingVertical: Space.xs,
+  },
+  matchRow: {
+    paddingVertical: Space.lg,
+    gap: Space.sm,
+    borderBottomWidth: StyleSheet.hairlineWidth,
+    borderBottomColor: Palette.border,
+  },
+  matchRowLast: {
+    borderBottomWidth: 0,
+  },
+  matchHead: {
+    flexDirection: 'row',
     alignItems: 'center',
-    marginRight: 8,
+    gap: Space.md,
   },
-  compatibilityBulletText: {
-    fontSize: 12,
+  matchGlyph: {
+    fontSize: 20,
+    width: 24,
   },
-  compatibilityText: {
-    fontSize: 14,
-    color: '#555',
-    fontWeight: '500',
+  matchName: {
+    flex: 1,
+    fontSize: 16,
+    fontWeight: '600',
+    color: Palette.text,
   },
-  clickHint: {
-    fontSize: 12,
-    marginLeft: 5,
-    opacity: 0.7,
+  matchScore: {
+    fontSize: 15,
+    fontWeight: '700',
+    fontVariant: ['tabular-nums'],
+  },
+  matchChevron: {
+    fontSize: 22,
+    color: Palette.textFaint,
+    marginLeft: 2,
+  },
+  matchNote: {
+    fontSize: 13,
+    lineHeight: 19,
+    color: Palette.textFaint,
+  },
+
+  footerActions: {
+    marginTop: Space.xxl,
   },
 });

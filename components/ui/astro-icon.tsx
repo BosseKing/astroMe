@@ -1,27 +1,41 @@
 import React from 'react';
-import { Text } from 'react-native';
+import { StyleSheet, Text, View } from 'react-native';
 
 interface AstroIconProps {
-  name: 'zodiac' | 'info';
+  name: 'zodiac' | 'book';
   size?: number;
   color?: string;
+  focused?: boolean;
 }
 
-export function AstroIcon({ name, size = 24, color = '#000' }: AstroIconProps) {
-  const getSymbol = () => {
-    switch (name) {
-      case 'zodiac':
-        return '♈'; // Symbole du Bélier comme représentation générale
-      case 'info':
-        return 'ℹ️';
-      default:
-        return '⭐';
-    }
-  };
+const GLYPHS: Record<AstroIconProps['name'], string> = {
+  zodiac: '☉',
+  book: '☾',
+};
 
+/** Glyphes astrologiques en guise d'icônes — pas d'emoji, pour rester sobre. */
+export function AstroIcon({ name, size = 22, color = '#FFF', focused = false }: AstroIconProps) {
   return (
-    <Text style={{ fontSize: size, color }}>
-      {getSymbol()}
-    </Text>
+    <View style={styles.wrapper}>
+      <Text style={{ fontSize: size, lineHeight: size * 1.25, color }}>{GLYPHS[name]}</Text>
+      <View
+        style={[
+          styles.dot,
+          { backgroundColor: color, opacity: focused ? 1 : 0 },
+        ]}
+      />
+    </View>
   );
 }
+
+const styles = StyleSheet.create({
+  wrapper: {
+    alignItems: 'center',
+    gap: 3,
+  },
+  dot: {
+    width: 3,
+    height: 3,
+    borderRadius: 1.5,
+  },
+});

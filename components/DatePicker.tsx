@@ -1,467 +1,361 @@
+import * as Haptics from 'expo-haptics';
 import { LinearGradient } from 'expo-linear-gradient';
-import React, { useState } from 'react';
+import React, { useMemo, useState } from 'react';
 import {
-    Dimensions,
-    Platform,
-    ScrollView,
-    StyleSheet,
-    Text,
-    TouchableOpacity,
-    View,
+  Platform,
+  Pressable,
+  ScrollView,
+  StyleSheet,
+  Text,
+  View,
+  useWindowDimensions,
 } from 'react-native';
+import Animated, { FadeIn, FadeInDown, LinearTransition } from 'react-native-reanimated';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
+
+import CosmicBackground from '@/components/ui/cosmic-background';
+import { GhostButton, PrimaryButton, SectionLabel } from '@/components/ui/kit';
+import { ElementTheme, Layout as L, Palette, Radius, Space, TAB_BAR_HEIGHT, Type } from '@/constants/design';
+import { MONTHS_SHORT, daysInMonth, getZodiacSign } from '@/utils/zodiac';
 
 interface DatePickerProps {
-  onDateSelect: (day: number, month: number, year: number) => void;
+  onDateSelect: (day: number, month: number) => void;
   onViewAllSigns?: () => void;
 }
 
-const { width } = Dimensions.get('window');
-const MONTHS = [
-  'Janvier', 'Février', 'Mars', 'Avril', 'Mai', 'Juin',
-  'Juillet', 'Août', 'Septembre', 'Octobre', 'Novembre', 'Décembre'
-];
+const tap = () => {
+  if (Platform.OS !== 'web') {
+    Haptics.selectionAsync().catch(() => {});
+  }
+};
 
 export default function DatePicker({ onDateSelect, onViewAllSigns }: DatePickerProps) {
-  const [selectedDay, setSelectedDay] = useState<number | null>(null);
-  const [selectedMonth, setSelectedMonth] = useState<number | null>(null);
-  const [selectedYear, setSelectedYear] = useState<number | null>(null);
-  const [dateError, setDateError] = useState<string | null>(null);
+  const insets = useSafeAreaInsets();
+  const { width } = useWindowDimensions();
 
-  const currentYear = new Date().getFullYear();
-  const years = Array.from({ length: currentYear - 1940 + 1 }, (_, i) => currentYear - i);
+  const [month, setMonth] = useState<number | null>(null);
+  const [day, setDay] = useState<number | null>(null);
 
-  const isLeapYear = (year: number): boolean => {
-    return (year % 4 === 0 && year % 100 !== 0) || (year % 400 === 0);
+  /** Aperçu en direct : dès que le couple jour/mois est complet. */
+  const preview = useMemo(
+    () => (day && month ? getZodiacSign(day, month) : null),
+    [day, month]
+  );
+
+  const accent = preview?.color ?? Palette.violet;
+  const contentWidth = Math.min(width, L.maxContent) - L.gutter * 2;
+  const daySize = Math.floor((contentWidth - 6 * Space.sm) / 7);
+
+  const handleMonth = (nextMonth: number) => {
+    tap();
+    setMonth(nextMonth);
+    // Un jour devenu impossible (31 février) est réinitialisé.
+    if (day && day > daysInMonth(nextMonth)) setDay(null);
   };
 
-  const getDaysInMonth = (month: number, year: number): number => {
-    const daysInMonth = [31, 28, 31, 30, 31, 30, 31, 31, 30, 31, 30, 31];
-    if (month === 2 && isLeapYear(year)) {
-      return 29;
-    }
-    return daysInMonth[month - 1];
-  };
-
-  const validateDate = (day: number, month: number, year: number): string | null => {
-    if (!day || !month || !year) return "Veuillez sélectionner une date complète";
-    
-    const maxDays = getDaysInMonth(month, year);
-    if (day > maxDays) {
-      return `Le ${month === 2 && isLeapYear(year) ? 'février' : MONTHS[month - 1].toLowerCase()} ${year} n'a que ${maxDays} jours`;
-    }
-
-    const selectedDate = new Date(year, month - 1, day);
-    const today = new Date();
-    if (selectedDate > today) {
-      return "La date ne peut pas être dans le futur";
-    }
-
-    return null;
-  };
-
-  const handleDaySelect = (day: number) => {
-    setSelectedDay(day);
-    if (selectedMonth && selectedYear) {
-      const error = validateDate(day, selectedMonth, selectedYear);
-      setDateError(error);
-    }
-  };
-
-  const handleMonthSelect = (month: number) => {
-    setSelectedMonth(month);
-    if (selectedDay && selectedYear) {
-      const error = validateDate(selectedDay, month, selectedYear);
-      setDateError(error);
-      // Si le jour sélectionné n'existe pas dans ce mois, le réinitialiser
-      const maxDays = getDaysInMonth(month, selectedYear);
-      if (selectedDay > maxDays) {
-        setSelectedDay(null);
-      }
-    }
-  };
-
-  const handleYearSelect = (year: number) => {
-    setSelectedYear(year);
-    if (selectedDay && selectedMonth) {
-      const error = validateDate(selectedDay, selectedMonth, year);
-      setDateError(error);
-      // Si le jour sélectionné n'existe pas dans cette année (cas du 29 février), le réinitialiser
-      const maxDays = getDaysInMonth(selectedMonth, year);
-      if (selectedDay > maxDays) {
-        setSelectedDay(null);
-      }
-    }
+  const handleDay = (nextDay: number) => {
+    tap();
+    setDay(nextDay);
   };
 
   const handleSubmit = () => {
-    if (selectedDay && selectedMonth && selectedYear) {
-      const error = validateDate(selectedDay, selectedMonth, selectedYear);
-      if (!error) {
-        onDateSelect(selectedDay, selectedMonth, selectedYear);
-      }
+    if (!day || !month) return;
+    if (Platform.OS !== 'web') {
+      Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success).catch(() => {});
     }
+    onDateSelect(day, month);
   };
 
-  const isFormValid = selectedDay && selectedMonth && selectedYear && !dateError;
-
   return (
-    <ScrollView style={styles.container} showsVerticalScrollIndicator={false}>
-      <LinearGradient
-        colors={['#E74C3C', '#FF6B6B']}
-        style={styles.header}
+    <CosmicBackground accent={accent}>
+      <ScrollView
+        showsVerticalScrollIndicator={false}
+        contentContainerStyle={[
+          styles.scroll,
+          { paddingTop: insets.top + Space.xl, paddingBottom: insets.bottom + TAB_BAR_HEIGHT + Space.xl },
+        ]}
       >
-        <Text style={styles.headerTitle}>✨ AstroMe ✨</Text>
-        <Text style={styles.headerSubtitle}>
-          Découvrez votre signe astrologique
-        </Text>
-      </LinearGradient>
-
-      <View style={styles.content}>
-        <Text style={styles.instructionText}>
-          Sélectionnez votre date de naissance :
-        </Text>
-
-        {/* Sélection du jour */}
-        <Text style={styles.sectionTitle}>Jour</Text>
-        <View style={styles.gridContainer}>
-          {selectedMonth && selectedYear ? 
-            Array.from({ length: getDaysInMonth(selectedMonth, selectedYear) }, (_, i) => i + 1).map((day) => (
-              <TouchableOpacity
-                key={day}
-                style={[
-                  styles.gridItem,
-                  selectedDay === day && styles.selectedItem,
-                ]}
-                onPress={() => handleDaySelect(day)}
-              >
-                <Text
-                  style={[
-                    styles.gridText,
-                    selectedDay === day && styles.selectedText,
-                  ]}
-                >
-                  {day}
-                </Text>
-              </TouchableOpacity>
-            )) :
-            Array.from({ length: 31 }, (_, i) => i + 1).map((day) => (
-              <TouchableOpacity
-                key={day}
-                style={[
-                  styles.gridItem,
-                  selectedDay === day && styles.selectedItem,
-                ]}
-                onPress={() => handleDaySelect(day)}
-              >
-                <Text
-                  style={[
-                    styles.gridText,
-                    selectedDay === day && styles.selectedText,
-                  ]}
-                >
-                  {day}
-                </Text>
-              </TouchableOpacity>
-            ))
-          }
-        </View>
-
-        {/* Sélection du mois */}
-        <Text style={styles.sectionTitle}>Mois</Text>
-        <View style={styles.monthContainer}>
-          {MONTHS.map((month, index) => (
-            <TouchableOpacity
-              key={month}
-              style={[
-                styles.monthItem,
-                selectedMonth === index + 1 && styles.selectedMonthItem,
-              ]}
-              onPress={() => handleMonthSelect(index + 1)}
-            >
-              <Text
-                style={[
-                  styles.monthText,
-                  selectedMonth === index + 1 && styles.selectedText,
-                ]}
-              >
-                {month}
-              </Text>
-            </TouchableOpacity>
-          ))}
-        </View>
-
-        {/* Sélection de l'année */}
-        <Text style={styles.sectionTitle}>Année</Text>
-        <ScrollView 
-          horizontal 
-          showsHorizontalScrollIndicator={false} 
-          style={styles.yearScrollContainer}
-          contentContainerStyle={styles.yearScrollContent}
-        >
-          {years.map((year) => (
-            <TouchableOpacity
-              key={year}
-              style={[
-                styles.yearScrollItem,
-                selectedYear === year && styles.selectedYearItem,
-              ]}
-              onPress={() => handleYearSelect(year)}
-            >
-              <Text
-                style={[
-                  styles.yearText,
-                  selectedYear === year && styles.selectedText,
-                ]}
-              >
-                {year}
-              </Text>
-            </TouchableOpacity>
-          ))}
-        </ScrollView>
-
-        {/* Message d'erreur */}
-        {dateError && (
-          <View style={styles.errorContainer}>
-            <Text style={styles.errorText}>⚠️ {dateError}</Text>
-          </View>
-        )}
-
-        {/* Bouton de validation */}
-        <TouchableOpacity
-          style={[
-            styles.submitButton,
-            !isFormValid && styles.submitButtonDisabled,
-          ]}
-          onPress={handleSubmit}
-          disabled={!isFormValid}
-        >
-          <LinearGradient
-            colors={isFormValid ? ['#E74C3C', '#FF6B6B'] : ['#cccccc', '#999999']}
-            style={styles.submitGradient}
-          >
-            <Text style={styles.submitText}>
-              Découvrir mon signe ✨
+        <View style={styles.inner}>
+          {/* En-tête */}
+          <Animated.View entering={FadeIn.duration(500)} style={styles.header}>
+            <View style={styles.wordmarkRow}>
+              <Text style={styles.wordmarkGlyph}>✦</Text>
+              <Text style={styles.wordmark}>ASTROME</Text>
+              <Text style={styles.wordmarkGlyph}>✦</Text>
+            </View>
+            <Text style={styles.title}>Quel est votre signe ?</Text>
+            <Text style={styles.subtitle}>
+              Le signe solaire ne dépend que du jour et du mois de naissance —
+              l’année n’entre pas en compte.
             </Text>
-          </LinearGradient>
-        </TouchableOpacity>
+          </Animated.View>
 
-        {/* Bouton pour voir tous les signes */}
-        {onViewAllSigns && (
-          <TouchableOpacity
-            style={styles.allSignsButton}
-            onPress={onViewAllSigns}
-          >
-            <LinearGradient
-              colors={['#FF6B35', '#F7931E']}
-              style={styles.allSignsGradient}
+          {/* Mois */}
+          <Animated.View entering={FadeInDown.delay(100).duration(500)} style={styles.block}>
+            <SectionLabel accent={accent}>Mois de naissance</SectionLabel>
+            <View style={styles.monthGrid}>
+              {MONTHS_SHORT.map((label, index) => {
+                const value = index + 1;
+                const active = month === value;
+                return (
+                  <Pressable
+                    key={label}
+                    onPress={() => handleMonth(value)}
+                    accessibilityRole="button"
+                    accessibilityState={{ selected: active }}
+                    style={({ pressed }) => [
+                      styles.monthCell,
+                      active && { borderColor: accent, backgroundColor: `${accent}22` },
+                      pressed && styles.pressed,
+                    ]}
+                  >
+                    <Text style={[styles.monthText, active && { color: Palette.text }]}>
+                      {label}
+                    </Text>
+                  </Pressable>
+                );
+              })}
+            </View>
+          </Animated.View>
+
+          {/* Jour */}
+          <Animated.View entering={FadeInDown.delay(180).duration(500)} style={styles.block}>
+            <SectionLabel accent={accent}>Jour de naissance</SectionLabel>
+            {month ? (
+              <Animated.View entering={FadeIn.duration(300)} style={styles.dayGrid}>
+                {Array.from({ length: daysInMonth(month) }, (_, i) => i + 1).map((value) => {
+                  const active = day === value;
+                  return (
+                    <Pressable
+                      key={value}
+                      onPress={() => handleDay(value)}
+                      accessibilityRole="button"
+                      accessibilityState={{ selected: active }}
+                      style={({ pressed }) => [
+                        styles.dayCell,
+                        { width: daySize, height: daySize, borderRadius: daySize / 2 },
+                        active && { borderColor: accent, backgroundColor: `${accent}2E` },
+                        pressed && styles.pressed,
+                      ]}
+                    >
+                      <Text style={[styles.dayText, active && styles.dayTextActive]}>{value}</Text>
+                    </Pressable>
+                  );
+                })}
+              </Animated.View>
+            ) : (
+              <View style={styles.placeholder}>
+                <Text style={styles.placeholderText}>
+                  Choisissez d’abord un mois pour afficher les jours.
+                </Text>
+              </View>
+            )}
+          </Animated.View>
+
+          {/* Aperçu du signe */}
+          {preview ? (
+            <Animated.View
+              key={preview.id}
+              entering={FadeInDown.duration(420)}
+              layout={LinearTransition.springify()}
+              style={styles.previewWrapper}
             >
-              <Text style={styles.allSignsText}>
-                🌟 Découvrir tous les signes 🌟
-              </Text>
-            </LinearGradient>
-          </TouchableOpacity>
-        )}
-      </View>
-    </ScrollView>
+              <LinearGradient
+                colors={[`${preview.color}33`, 'transparent']}
+                start={{ x: 0, y: 0 }}
+                end={{ x: 1, y: 1 }}
+                style={[styles.preview, { borderColor: `${preview.color}55` }]}
+              >
+                <View style={[styles.previewGlyphRing, { borderColor: `${preview.color}66` }]}>
+                  <Text style={[styles.previewGlyph, { color: preview.color }]}>
+                    {preview.symbol}
+                  </Text>
+                </View>
+                <View style={styles.previewBody}>
+                  <Text style={styles.previewLabel}>Votre signe solaire</Text>
+                  <Text style={styles.previewName}>{preview.name}</Text>
+                  <Text style={styles.previewMeta}>
+                    {preview.period} · {ElementTheme[preview.element].glyph} {preview.element} ·{' '}
+                    {preview.modality}
+                  </Text>
+                </View>
+              </LinearGradient>
+            </Animated.View>
+          ) : null}
+
+          {/* Actions */}
+          <View style={styles.actions}>
+            <PrimaryButton
+              label="Révéler mon signe"
+              onPress={handleSubmit}
+              disabled={!preview}
+              glowColor={accent}
+              colors={preview ? preview.gradient : ['#2A2D42', '#22243A']}
+            />
+            {onViewAllSigns ? (
+              <GhostButton label="Explorer les 12 signes" onPress={onViewAllSigns} />
+            ) : null}
+          </View>
+        </View>
+      </ScrollView>
+    </CosmicBackground>
   );
 }
 
 const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: '#f8f9ff',
+  scroll: {
+    paddingHorizontal: L.gutter,
+    alignItems: 'center',
   },
+  inner: {
+    width: '100%',
+    maxWidth: L.maxContent,
+  },
+  pressed: {
+    opacity: 0.65,
+    transform: [{ scale: 0.96 }],
+  },
+
   header: {
-    paddingTop: Platform.OS === 'ios' ? 50 : 30,
-    paddingBottom: 30,
-    paddingHorizontal: 20,
     alignItems: 'center',
-    borderBottomLeftRadius: 30,
-    borderBottomRightRadius: 30,
+    marginBottom: Space.xxl,
   },
-  headerTitle: {
-    fontSize: 32,
-    fontWeight: 'bold',
-    color: 'white',
-    marginBottom: 5,
+  wordmarkRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: Space.sm,
+    marginBottom: Space.lg,
   },
-  headerSubtitle: {
-    fontSize: 16,
-    color: 'rgba(255, 255, 255, 0.9)',
+  wordmark: {
+    color: Palette.gold,
+    fontSize: 12,
+    fontWeight: '700',
+    letterSpacing: 5,
+  },
+  wordmarkGlyph: {
+    color: Palette.gold,
+    fontSize: 10,
+    opacity: 0.8,
+  },
+  title: {
+    ...Type.display,
+    color: Palette.text,
     textAlign: 'center',
   },
-  content: {
-    flex: 1,
-    paddingHorizontal: 20,
-    paddingTop: 20,
-  },
-  instructionText: {
-    fontSize: 18,
-    fontWeight: '600',
-    color: '#333',
+  subtitle: {
+    ...Type.body,
+    color: Palette.textMuted,
     textAlign: 'center',
-    marginBottom: 30,
+    marginTop: Space.md,
+    maxWidth: 330,
   },
-  sectionTitle: {
-    fontSize: 20,
-    fontWeight: 'bold',
-    color: '#E74C3C',
-    marginBottom: 15,
-    marginTop: 20,
+
+  block: {
+    marginBottom: Space.xl,
   },
-  gridContainer: {
+
+  monthGrid: {
     flexDirection: 'row',
     flexWrap: 'wrap',
-    justifyContent: 'space-between',
+    gap: Space.sm,
   },
-  gridItem: {
-    width: (width - 80) / 7,
-    height: 45,
-    backgroundColor: 'white',
-    borderRadius: 8,
-    marginBottom: 10,
-    justifyContent: 'center',
+  monthCell: {
+    flexGrow: 1,
+    flexBasis: '30%',
+    paddingVertical: 13,
     alignItems: 'center',
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
-    shadowRadius: 3,
-    elevation: 3,
-  },
-  selectedItem: {
-    backgroundColor: '#E74C3C',
-  },
-  gridText: {
-    fontSize: 16,
-    color: '#333',
-    fontWeight: '500',
-  },
-  selectedText: {
-    color: 'white',
-    fontWeight: 'bold',
-  },
-  monthContainer: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    justifyContent: 'space-between',
-  },
-  monthItem: {
-    width: (width - 60) / 2,
-    backgroundColor: 'white',
-    paddingVertical: 15,
-    paddingHorizontal: 10,
-    borderRadius: 12,
-    marginBottom: 10,
-    alignItems: 'center',
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
-    shadowRadius: 3,
-    elevation: 3,
-  },
-  selectedMonthItem: {
-    backgroundColor: '#E74C3C',
+    borderRadius: Radius.md,
+    borderWidth: StyleSheet.hairlineWidth,
+    borderColor: Palette.border,
+    backgroundColor: Palette.surface,
   },
   monthText: {
-    fontSize: 16,
-    color: '#333',
-    fontWeight: '500',
+    color: Palette.textMuted,
+    fontSize: 14,
+    fontWeight: '600',
+    letterSpacing: 0.2,
   },
-  yearContainer: {
+
+  dayGrid: {
     flexDirection: 'row',
     flexWrap: 'wrap',
-    justifyContent: 'space-between',
+    gap: Space.sm,
   },
-  yearScrollContainer: {
-    maxHeight: 60,
-    marginBottom: 20,
-  },
-  yearScrollContent: {
-    paddingHorizontal: 10,
-  },
-  yearItem: {
-    width: (width - 80) / 4,
-    backgroundColor: 'white',
-    paddingVertical: 12,
-    borderRadius: 8,
-    marginBottom: 10,
-    alignItems: 'center',
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
-    shadowRadius: 3,
-    elevation: 3,
-  },
-  yearScrollItem: {
-    backgroundColor: 'white',
-    paddingVertical: 15,
-    paddingHorizontal: 20,
-    borderRadius: 8,
-    marginRight: 10,
+  dayCell: {
     alignItems: 'center',
     justifyContent: 'center',
-    minWidth: 70,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
-    shadowRadius: 3,
-    elevation: 3,
+    borderWidth: StyleSheet.hairlineWidth,
+    borderColor: Palette.border,
+    backgroundColor: Palette.surface,
   },
-  selectedYearItem: {
-    backgroundColor: '#E74C3C',
-  },
-  yearText: {
-    fontSize: 14,
-    color: '#333',
+  dayText: {
+    color: Palette.textMuted,
+    fontSize: 15,
     fontWeight: '500',
   },
-  errorContainer: {
-    backgroundColor: '#ffe6e6',
-    padding: 15,
-    borderRadius: 10,
-    marginBottom: 20,
-    borderLeftWidth: 4,
-    borderLeftColor: '#ff4444',
+  dayTextActive: {
+    color: Palette.text,
+    fontWeight: '700',
   },
-  errorText: {
-    color: '#cc0000',
+  placeholder: {
+    borderRadius: Radius.md,
+    borderWidth: StyleSheet.hairlineWidth,
+    borderColor: Palette.border,
+    borderStyle: 'dashed',
+    paddingVertical: Space.xl,
+    paddingHorizontal: Space.lg,
+    alignItems: 'center',
+  },
+  placeholderText: {
+    color: Palette.textFaint,
     fontSize: 14,
-    fontWeight: '500',
     textAlign: 'center',
   },
-  submitButton: {
-    marginTop: 30,
-    marginBottom: 30,
-    borderRadius: 25,
-    overflow: 'hidden',
+
+  previewWrapper: {
+    marginBottom: Space.xl,
   },
-  submitButtonDisabled: {
-    opacity: 0.5,
-  },
-  submitGradient: {
-    paddingVertical: 18,
-    paddingHorizontal: 30,
+  preview: {
+    flexDirection: 'row',
     alignItems: 'center',
+    gap: Space.lg,
+    padding: Space.lg,
+    borderRadius: Radius.lg,
+    borderWidth: StyleSheet.hairlineWidth,
   },
-  submitText: {
-    color: 'white',
-    fontSize: 18,
-    fontWeight: 'bold',
-  },
-  allSignsButton: {
-    marginTop: 10,
-    marginBottom: 30,
-    borderRadius: 25,
-    overflow: 'hidden',
-  },
-  allSignsGradient: {
-    paddingVertical: 18,
-    paddingHorizontal: 30,
+  previewGlyphRing: {
+    width: 60,
+    height: 60,
+    borderRadius: 30,
+    borderWidth: 1,
     alignItems: 'center',
+    justifyContent: 'center',
   },
-  allSignsText: {
-    color: 'white',
-    fontSize: 16,
-    fontWeight: 'bold',
+  previewGlyph: {
+    fontSize: 30,
+    lineHeight: 36,
+  },
+  previewBody: {
+    flex: 1,
+    gap: 3,
+  },
+  previewLabel: {
+    ...Type.label,
+    color: Palette.textFaint,
+  },
+  previewName: {
+    fontSize: 24,
+    fontWeight: '700',
+    color: Palette.text,
+    letterSpacing: -0.3,
+  },
+  previewMeta: {
+    fontSize: 13,
+    color: Palette.textMuted,
+  },
+
+  actions: {
+    gap: Space.md,
+    marginTop: Space.sm,
   },
 });

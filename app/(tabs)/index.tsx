@@ -1,65 +1,66 @@
 import React, { useState } from 'react';
 import { StyleSheet, View } from 'react-native';
 
+import AllZodiacSigns from '@/components/AllZodiacSigns';
 import DatePicker from '@/components/DatePicker';
 import ZodiacResult from '@/components/ZodiacResult';
-import AllZodiacSigns from '@/components/AllZodiacSigns';
-import { ZodiacSign } from '@/types/astrology';
+import { MonthDay, ZodiacSign } from '@/types/astrology';
 import { getZodiacSign } from '@/utils/zodiac';
 
 type ViewState = 'datePicker' | 'zodiacResult' | 'allSigns';
 
 export default function HomeScreen() {
-  const [currentView, setCurrentView] = useState<ViewState>('datePicker');
-  const [currentZodiacSign, setCurrentZodiacSign] = useState<ZodiacSign | null>(null);
-  const [birthDate, setBirthDate] = useState<{ day: number; month: number; year: number } | null>(null);
+  const [view, setView] = useState<ViewState>('datePicker');
+  const [sign, setSign] = useState<ZodiacSign | null>(null);
+  const [birthDate, setBirthDate] = useState<MonthDay | null>(null);
+  /** D'où l'on vient, pour que le retour depuis une fiche revienne au bon écran. */
+  const [origin, setOrigin] = useState<ViewState>('datePicker');
 
-  const handleDateSelect = (day: number, month: number, year: number) => {
-    const zodiacSign = getZodiacSign(day, month);
-    setCurrentZodiacSign(zodiacSign);
-    setBirthDate({ day, month, year });
-    setCurrentView('zodiacResult');
+  const handleDateSelect = (day: number, month: number) => {
+    setSign(getZodiacSign(day, month));
+    setBirthDate({ day, month });
+    setOrigin('datePicker');
+    setView('zodiacResult');
   };
 
-  const handleViewAllSigns = () => {
-    setCurrentView('allSigns');
-  };
+  const handleViewAllSigns = () => setView('allSigns');
 
-  const handleSignSelect = (zodiacSign: ZodiacSign) => {
-    setCurrentZodiacSign(zodiacSign);
-    setBirthDate(null); // Pas de date de naissance pour les signes sélectionnés manuellement
-    setCurrentView('zodiacResult');
+  const handleSignSelect = (selected: ZodiacSign) => {
+    setSign(selected);
+    // Un signe choisi dans la liste ou via les affinités n'est pas une date de naissance.
+    setBirthDate(null);
+    setOrigin(view === 'allSigns' ? 'allSigns' : origin);
+    setView('zodiacResult');
   };
 
   const handleBack = () => {
-    setCurrentView('datePicker');
-    setCurrentZodiacSign(null);
-    setBirthDate(null);
-  };
-
-  const handleBackFromAllSigns = () => {
-    setCurrentView('datePicker');
+    setView(origin);
+    if (origin === 'datePicker') {
+      setSign(null);
+      setBirthDate(null);
+    }
   };
 
   return (
     <View style={styles.container}>
-      {currentView === 'zodiacResult' && currentZodiacSign ? (
+      {view === 'zodiacResult' && sign ? (
         <ZodiacResult
-          zodiacSign={currentZodiacSign}
+          zodiacSign={sign}
           birthDate={birthDate}
           onBack={handleBack}
           onSignSelect={handleSignSelect}
+          backLabel={origin === 'allSigns' ? 'Retour aux 12 signes' : 'Changer de date'}
         />
-      ) : currentView === 'allSigns' ? (
+      ) : view === 'allSigns' ? (
         <AllZodiacSigns
           onSignSelect={handleSignSelect}
-          onBack={handleBackFromAllSigns}
+          onBack={() => {
+            setOrigin('datePicker');
+            setView('datePicker');
+          }}
         />
       ) : (
-        <DatePicker
-          onDateSelect={handleDateSelect}
-          onViewAllSigns={handleViewAllSigns}
-        />
+        <DatePicker onDateSelect={handleDateSelect} onViewAllSigns={handleViewAllSigns} />
       )}
     </View>
   );

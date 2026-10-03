@@ -1,15 +1,14 @@
-import React from 'react';
-import {
-  View,
-  Text,
-  StyleSheet,
-  ScrollView,
-  TouchableOpacity,
-  Dimensions,
-  Platform,
-} from 'react-native';
+import * as Haptics from 'expo-haptics';
 import { LinearGradient } from 'expo-linear-gradient';
-import { ZodiacSign } from '@/types/astrology';
+import React, { useMemo, useState } from 'react';
+import { Platform, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
+import Animated, { FadeIn, FadeInDown } from 'react-native-reanimated';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
+
+import CosmicBackground from '@/components/ui/cosmic-background';
+import { BackButton, SectionLabel } from '@/components/ui/kit';
+import { ElementTheme, Layout as L, Palette, Radius, Space, TAB_BAR_HEIGHT, Type } from '@/constants/design';
+import { Element, ZodiacSign } from '@/types/astrology';
 import { zodiacSigns } from '@/utils/zodiac';
 
 interface AllZodiacSignsProps {
@@ -17,148 +16,213 @@ interface AllZodiacSignsProps {
   onBack: () => void;
 }
 
-const { width } = Dimensions.get('window');
+type Filter = 'Tous' | Element;
+
+const FILTERS: Filter[] = ['Tous', 'Feu', 'Terre', 'Air', 'Eau'];
 
 export default function AllZodiacSigns({ onSignSelect, onBack }: AllZodiacSignsProps) {
+  const insets = useSafeAreaInsets();
+  const [filter, setFilter] = useState<Filter>('Tous');
+
+  const visible = useMemo(
+    () => (filter === 'Tous' ? zodiacSigns : zodiacSigns.filter((s) => s.element === filter)),
+    [filter]
+  );
+
+  const accent = filter === 'Tous' ? Palette.violet : ElementTheme[filter].tint;
+
+  const select = (next: Filter) => {
+    if (Platform.OS !== 'web') Haptics.selectionAsync().catch(() => {});
+    setFilter(next);
+  };
+
   return (
-    <ScrollView style={styles.container} showsVerticalScrollIndicator={false}>
-      <LinearGradient
-        colors={['#FF6B35', '#F7931E']}
-        style={styles.header}
+    <CosmicBackground accent={accent}>
+      <ScrollView
+        showsVerticalScrollIndicator={false}
+        contentContainerStyle={[
+          styles.scroll,
+          { paddingTop: insets.top + Space.md, paddingBottom: insets.bottom + TAB_BAR_HEIGHT + Space.xl },
+        ]}
       >
-        <TouchableOpacity style={styles.backArrow} onPress={onBack}>
-          <Text style={styles.backArrowText}>← Retour</Text>
-        </TouchableOpacity>
-        <Text style={styles.headerTitle}>Les 12 Signes du Zodiaque</Text>
-        <Text style={styles.headerSubtitle}>
-          Découvrez chaque signe astrologique
-        </Text>
-      </LinearGradient>
+        <View style={styles.inner}>
+          <BackButton onPress={onBack} />
 
-      <View style={styles.content}>
-        <Text style={styles.instructionText}>
-          Cliquez sur un signe pour découvrir ses caractéristiques
-        </Text>
+          <Animated.View entering={FadeIn.duration(450)} style={styles.header}>
+            <Text style={styles.title}>Les douze signes</Text>
+            <Text style={styles.subtitle}>
+              La roue du zodiaque se lit dans l’ordre des saisons, du Bélier au Poissons.
+              Chaque signe croise un élément et un mode qui n’appartiennent qu’à lui.
+            </Text>
+          </Animated.View>
 
-        <View style={styles.signsGrid}>
-          {zodiacSigns.map((sign, index) => (
-            <TouchableOpacity
-              key={index}
-              style={styles.signCard}
-              onPress={() => onSignSelect(sign)}
-            >
-              <LinearGradient
-                colors={sign.gradient}
-                style={styles.signGradient}
+          {/* Filtre par élément */}
+          <View style={styles.filterRow}>
+            {FILTERS.map((item) => {
+              const active = filter === item;
+              const tint = item === 'Tous' ? Palette.gold : ElementTheme[item].tint;
+              return (
+                <Pressable
+                  key={item}
+                  onPress={() => select(item)}
+                  accessibilityRole="button"
+                  accessibilityState={{ selected: active }}
+                  style={({ pressed }) => [
+                    styles.filterChip,
+                    active && { borderColor: `${tint}88`, backgroundColor: `${tint}1F` },
+                    pressed && styles.pressed,
+                  ]}
+                >
+                  <Text style={[styles.filterText, active && { color: tint }]}>
+                    {item === 'Tous' ? 'Tous' : `${ElementTheme[item].glyph} ${item}`}
+                  </Text>
+                </Pressable>
+              );
+            })}
+          </View>
+
+          <SectionLabel accent={accent}>
+            {visible.length === 12 ? 'La roue complète' : `${visible.length} signes de ${filter}`}
+          </SectionLabel>
+
+          <View style={styles.grid}>
+            {visible.map((sign, index) => (
+              <Animated.View
+                key={sign.id}
+                entering={FadeInDown.delay(index * 45).duration(380)}
+                style={styles.cardWrapper}
               >
-                <Text style={styles.signEmoji}>{sign.emoji}</Text>
-                <Text style={styles.signName}>{sign.name}</Text>
-                <Text style={styles.signSymbol}>{sign.symbol}</Text>
-                <Text style={styles.signPeriod}>{sign.period}</Text>
-                <Text style={styles.signElement}>{sign.element}</Text>
-              </LinearGradient>
-            </TouchableOpacity>
-          ))}
+                <Pressable
+                  onPress={() => {
+                    if (Platform.OS !== 'web') Haptics.selectionAsync().catch(() => {});
+                    onSignSelect(sign);
+                  }}
+                  accessibilityRole="button"
+                  accessibilityLabel={`Voir la fiche du signe ${sign.name}`}
+                  style={({ pressed }) => [styles.card, pressed && styles.pressed]}
+                >
+                  <LinearGradient
+                    colors={[`${sign.color}2E`, 'rgba(255,255,255,0.02)']}
+                    start={{ x: 0, y: 0 }}
+                    end={{ x: 1, y: 1 }}
+                    style={[styles.cardInner, { borderColor: `${sign.color}44` }]}
+                  >
+                    <Text style={[styles.cardGlyph, { color: sign.color }]}>{sign.symbol}</Text>
+                    <Text style={styles.cardName}>{sign.name}</Text>
+                    <Text style={styles.cardTagline}>{sign.tagline}</Text>
+                    <View style={[styles.cardRule, { backgroundColor: `${sign.color}55` }]} />
+                    <Text style={styles.cardPeriod}>{sign.period}</Text>
+                    <Text style={styles.cardMeta}>
+                      {ElementTheme[sign.element].glyph} {sign.element} · {sign.modality}
+                    </Text>
+                  </LinearGradient>
+                </Pressable>
+              </Animated.View>
+            ))}
+          </View>
         </View>
-      </View>
-    </ScrollView>
+      </ScrollView>
+    </CosmicBackground>
   );
 }
 
 const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: '#FFF5F0',
-  },
-  header: {
-    paddingTop: Platform.OS === 'ios' ? 50 : 30,
-    paddingBottom: 30,
-    paddingHorizontal: 20,
+  scroll: {
+    paddingHorizontal: L.gutter,
     alignItems: 'center',
-    borderBottomLeftRadius: 30,
-    borderBottomRightRadius: 30,
   },
-  backArrow: {
-    position: 'absolute',
-    top: Platform.OS === 'ios' ? 50 : 30,
-    left: 20,
-    zIndex: 1,
+  inner: {
+    width: '100%',
+    maxWidth: L.maxContent,
   },
-  backArrowText: {
-    fontSize: 16,
-    color: 'white',
-    fontWeight: 'bold',
+  pressed: {
+    opacity: 0.7,
+    transform: [{ scale: 0.98 }],
   },
-  headerTitle: {
-    fontSize: 28,
-    fontWeight: 'bold',
-    color: 'white',
-    marginBottom: 5,
-    marginTop: 20,
+
+  header: {
+    paddingTop: Space.lg,
+    marginBottom: Space.xl,
   },
-  headerSubtitle: {
-    fontSize: 16,
-    color: 'rgba(255, 255, 255, 0.9)',
-    textAlign: 'center',
+  title: {
+    ...Type.display,
+    color: Palette.text,
   },
-  content: {
-    paddingHorizontal: 20,
-    paddingTop: 20,
+  subtitle: {
+    ...Type.body,
+    color: Palette.textMuted,
+    marginTop: Space.md,
   },
-  instructionText: {
-    fontSize: 18,
-    fontWeight: '600',
-    color: '#333',
-    textAlign: 'center',
-    marginBottom: 30,
-  },
-  signsGrid: {
+
+  filterRow: {
     flexDirection: 'row',
     flexWrap: 'wrap',
-    justifyContent: 'space-between',
+    gap: Space.sm,
+    marginBottom: Space.xl,
   },
-  signCard: {
-    width: (width - 60) / 2,
-    marginBottom: 20,
-    borderRadius: 20,
+  filterChip: {
+    paddingHorizontal: Space.lg,
+    paddingVertical: 9,
+    borderRadius: Radius.pill,
+    borderWidth: StyleSheet.hairlineWidth,
+    borderColor: Palette.border,
+    backgroundColor: Palette.surface,
+  },
+  filterText: {
+    fontSize: 13,
+    fontWeight: '600',
+    color: Palette.textMuted,
+  },
+
+  grid: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: Space.md,
+  },
+  cardWrapper: {
+    flexGrow: 1,
+    flexBasis: '46%',
+  },
+  card: {
+    borderRadius: Radius.lg,
     overflow: 'hidden',
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.15,
-    shadowRadius: 8,
-    elevation: 6,
   },
-  signGradient: {
-    padding: 20,
+  cardInner: {
+    paddingVertical: Space.xl,
+    paddingHorizontal: Space.lg,
     alignItems: 'center',
-    minHeight: 180,
-    justifyContent: 'center',
+    borderRadius: Radius.lg,
+    borderWidth: StyleSheet.hairlineWidth,
+    gap: 4,
   },
-  signEmoji: {
-    fontSize: 40,
-    marginBottom: 8,
+  cardGlyph: {
+    fontSize: 34,
+    lineHeight: 42,
   },
-  signName: {
-    fontSize: 18,
-    fontWeight: 'bold',
-    color: 'white',
-    marginBottom: 4,
-    textAlign: 'center',
+  cardName: {
+    fontSize: 19,
+    fontWeight: '700',
+    color: Palette.text,
+    letterSpacing: -0.2,
   },
-  signSymbol: {
-    fontSize: 24,
-    color: 'rgba(255, 255, 255, 0.9)',
-    marginBottom: 6,
-  },
-  signPeriod: {
+  cardTagline: {
     fontSize: 12,
-    color: 'rgba(255, 255, 255, 0.8)',
-    textAlign: 'center',
-    marginBottom: 4,
-  },
-  signElement: {
-    fontSize: 12,
-    color: 'rgba(255, 255, 255, 0.8)',
+    color: Palette.textMuted,
     fontStyle: 'italic',
+  },
+  cardRule: {
+    width: 26,
+    height: 1,
+    marginVertical: Space.sm,
+  },
+  cardPeriod: {
+    fontSize: 11.5,
+    color: Palette.textFaint,
+    textAlign: 'center',
+  },
+  cardMeta: {
+    fontSize: 11,
+    color: Palette.textFaint,
+    letterSpacing: 0.3,
   },
 });
